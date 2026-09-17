@@ -57,7 +57,7 @@ function render(state: GameState, name: string) {
     '<svg xmlns="http://www.w3.org/2000/svg" ',
   );
 
-  const png = new Resvg(svg, { fitTo: { mode: 'width', value: 1400 }, background: '#e6ecf3' }).render().asPng();
+  const png = new Resvg(svg, { fitTo: { mode: 'width', value: 1400 }, background: '#15222b' }).render().asPng();
   mkdirSync('preview', { recursive: true });
   writeFileSync(`preview/${name}.png`, png);
   console.log(`preview/${name}.png`);

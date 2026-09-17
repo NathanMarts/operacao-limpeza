@@ -1,39 +1,31 @@
 @import "tailwindcss";
 
 /*
-  Tema claro.
-
-  As cores da PLANTA (pastéis, paredes pretas, corredor cinza) vêm do mockup e
-  não mudam com o tema — o desenho técnico é claro nos dois casos. O que muda é
-  o chrome em volta: painéis brancos sobre um cinza-azulado frio.
-
-  Paleta escura original, caso queiram voltar:
-    bg #060e17 · panel #0c1a25 · panel-2 #0b1822 · header #0c1b27
-    map-bg #15222b · modal #0e1822 · modal-card #142431 · btn #1b2835
-    line #1c2b38 · accent-soft #253869 · row-active #192943 · total-box #202a4b
-    txt #f0f7fc · txt-2 #93a7b8 · txt-3 #5d7186
+  Paleta extraída pixel a pixel de Prototipo/prototipo.png.
+  Regra do desenho: o chrome é azul-marinho escuro; a PLANTA é clara —
+  paredes pretas e ambientes em pastel, como uma planta impressa.
 */
 @theme {
-  --color-bg: #eef2f7;
-  --color-panel: #ffffff;
-  --color-panel-2: #e7edf4;
-  --color-header: #ffffff;
-  --color-map-bg: #e6ecf3;
-  --color-modal: #ffffff;
-  --color-modal-card: #f2f6fa;
-  --color-btn: #e7edf4;
-  --color-line: #d5dfe9;
+  --color-bg: #060e17;
+  --color-panel: #0c1a25;
+  --color-panel-2: #0b1822;
+  --color-header: #0c1b27;
+  --color-map-bg: #15222b;
+  --color-modal: #0e1822;
+  --color-modal-card: #142431;
+  --color-btn: #1b2835;
+  --color-line: #1c2b38;
 
-  --color-accent: #2f5fd0;
-  --color-accent-soft: #dde7fb;
-  --color-row-active: #e4ecfd;
-  --color-total-box: #e6ecfd;
+  --color-accent: #4f7df3;
+  --color-accent-soft: #253869;
+  --color-row-active: #192943;
+  --color-total-box: #202a4b;
 
-  --color-txt: #0f1b26;
-  --color-txt-2: #4c5e70;
-  --color-txt-3: #7b8b9b;
+  --color-txt: #f0f7fc;
+  --color-txt-2: #93a7b8;
+  --color-txt-3: #5d7186;
 
-  /* Ambientes da planta — iguais ao mockup, independentes do tema */
+  /* Ambientes da planta */
   --color-plan-grande: #a6d6f9;
   --color-plan-media: #f9d89c;
   --color-plan-pequena: #96e6cb;
@@ -45,15 +37,15 @@
   --color-plan-corredor: #d5d4d4;
   --color-plan-parede: #1e1e1e;
 
-  --color-ok: #0a7f59;
-  --color-warn: #b06f08;
-  --color-danger: #c0484c;
+  --color-ok: #34d399;
+  --color-warn: #f0b429;
+  --color-danger: #d4696c;
 
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 html,

@@ -229,7 +229,7 @@ export function BuildingMap({
         fontFamily="Inter, sans-serif"
         fontSize="11"
         fontWeight="700"
-        fill="#4c5e70"
+        fill="#93a7b8"
         pointerEvents="none"
       >
         ENTRADA (0 m)

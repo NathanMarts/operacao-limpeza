@@ -125,7 +125,7 @@ function MetricCard({
         alert ? 'border-warn/50 bg-warn/10' : 'border-line bg-panel'
       }`}
     >
-      <Glyph className={`h-7 w-7 shrink-0 ${alert ? 'text-warn' : 'text-txt-2'}`} aria-hidden />
+      <Glyph className={`h-8 w-8 shrink-0 ${alert ? 'text-warn' : 'text-txt-2'}`} aria-hidden />
       <div>
         <p className="text-[12px] leading-none text-txt-2">{label}</p>
         <p className={`mt-1 text-[21px] font-bold leading-none ${alert ? 'text-warn' : 'text-txt'}`}>
@@ -174,13 +174,13 @@ export function Legend() {
       </ul>
       <ul className="mt-3 space-y-1.5 border-t border-line pt-3 text-[12.5px] text-txt-3">
         <li className="flex items-center gap-2">
-          <Selo cor="#0f9d6e" icon={Icon.concluida} /> concluída
+          <Selo cor="#34d399" icon={Icon.concluida} /> concluída
         </li>
         <li className="flex items-center gap-2">
-          <Selo cor="#d08a08" icon={Icon.pendente} /> pendente, exige retorno
+          <Selo cor="#f0b429" icon={Icon.pendente} /> pendente, exige retorno
         </li>
         <li className="flex items-center gap-2">
-          <Selo cor="#7b8b9b" icon={Icon.bloqueada} /> bloqueada por enquanto
+          <Selo cor="#5b6472" icon={Icon.bloqueada} /> bloqueada por enquanto
         </li>
       </ul>
     </Card>
@@ -194,7 +194,7 @@ function Selo({ cor, icon: Glyph }: { cor: string; icon: ComponentType<{ classNa
       style={{ background: cor }}
       aria-hidden
     >
-      <Glyph className="h-2.5 w-2.5 text-white" />
+      <Glyph className="h-2.5 w-2.5 text-[#0b1822]" />
     </span>
   );
 }
@@ -212,13 +212,13 @@ export function TipPanel() {
 
 export function QuoteBlock() {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-line bg-gradient-to-br from-[#dbe7f5] via-[#e8eef7] to-[#f4f7fb] p-5">
-      <div className="absolute inset-0 opacity-70" aria-hidden>
-        <div className="absolute bottom-0 left-0 right-0 h-20 bg-[#c3d5e9]" />
-        <div className="absolute bottom-6 left-6 h-16 w-28 rounded-sm bg-[#aec6e0]" />
-        <div className="absolute bottom-6 right-8 h-20 w-20 rounded-sm bg-[#b9cee4]" />
+    <div className="relative overflow-hidden rounded-xl border border-line bg-gradient-to-br from-[#12263a] via-[#0d1b2a] to-[#0a1520] p-5">
+      <div className="absolute inset-0 opacity-25" aria-hidden>
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-[#1b3550]" />
+        <div className="absolute bottom-6 left-6 h-16 w-28 rounded-sm bg-[#25456a]" />
+        <div className="absolute bottom-6 right-8 h-20 w-20 rounded-sm bg-[#1f3c5c]" />
       </div>
-      <p className="relative mt-16 text-[14px] font-medium leading-snug text-[#33506b]">
+      <p className="relative mt-16 text-[14px] leading-snug text-txt-2">
         Pequenas decisões,
         <br />
         grandes resultados.

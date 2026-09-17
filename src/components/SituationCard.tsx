@@ -2,30 +2,30 @@ import { formatMinutes, type ActionSummary, type Availability } from '../domain/
 import type { SituationAction } from '../domain/types';
 import { ConsequenceIcon, Icon } from './icons';
 
-/** Três paletas, como no mockup: vermelha, verde-água e âmbar — em tons claros. */
+/** Três paletas, como no mockup: vermelha, verde-água e âmbar. */
 const PALETAS = [
   {
-    borda: 'border-[#e6b3b5]',
-    fundo: 'bg-[#fdf3f3]',
-    titulo: 'text-[#a33a3e]',
-    selo: 'bg-[#fae2e3] text-[#93373a] ring-[#e6b3b5]',
-    botao: 'bg-[#c0484c] hover:bg-[#ad3e42] text-white',
+    borda: 'border-[#8b3b3f]',
+    fundo: 'bg-[#271d27]',
+    titulo: 'text-[#e88b8e]',
+    selo: 'bg-[#4a2427] text-[#f0a9ab] ring-[#8b3b3f]',
+    botao: 'bg-[#b25356] hover:bg-[#c25f62] text-white',
     icone: Icon.alerta,
   },
   {
-    borda: 'border-[#a5dbc8]',
-    fundo: 'bg-[#eefaf5]',
-    titulo: 'text-[#12795a]',
-    selo: 'bg-[#d6f2e7] text-[#0f6a4f] ring-[#a5dbc8]',
-    botao: 'bg-[#189b71] hover:bg-[#158a65] text-white',
+    borda: 'border-[#2c7a63]',
+    fundo: 'bg-[#11292b]',
+    titulo: 'text-[#5fd3ae]',
+    selo: 'bg-[#123a33] text-[#7fe0c0] ring-[#2c7a63]',
+    botao: 'bg-[#32856c] hover:bg-[#3a9a7d] text-white',
     icone: Icon.pacote,
   },
   {
-    borda: 'border-[#e0c88e]',
-    fundo: 'bg-[#fdf8ec]',
-    titulo: 'text-[#8a6414]',
-    selo: 'bg-[#f6ead0] text-[#7a5711] ring-[#e0c88e]',
-    botao: 'bg-[#a8801f] hover:bg-[#96711a] text-white',
+    borda: 'border-[#8a6a2e]',
+    fundo: 'bg-[#232423]',
+    titulo: 'text-[#e6bb62]',
+    selo: 'bg-[#3b3116] text-[#f0cd84] ring-[#8a6a2e]',
+    botao: 'bg-[#9d7b3f] hover:bg-[#b18c48] text-white',
     icone: Icon.pessoa,
   },
 ] as const;
@@ -49,8 +49,8 @@ export function SituationCard({ action, summary, availability, index, onChoose }
         disabled ? 'opacity-45' : ''
       }`}
     >
-      <h4 className={`flex items-center gap-2.5 text-[14.5px] font-semibold leading-snug ${paleta.titulo}`}>
-        <Glyph className="h-[38px] w-[38px] shrink-0" aria-hidden />
+      <h4 className={`flex items-start gap-2.5 text-[14.5px] font-semibold leading-snug ${paleta.titulo}`}>
+        <Glyph className="h-[18px] w-[18px] shrink-0" aria-hidden />
         {action.label}
       </h4>
 
@@ -88,7 +88,7 @@ export function SituationCard({ action, summary, availability, index, onChoose }
       </ul>
 
       {disabled && !availability.available && (
-        <p className="mt-3 rounded-md bg-black/[0.06] px-3 py-2 text-[12px] text-txt-2">{availability.reason}</p>
+        <p className="mt-3 rounded-md bg-black/25 px-3 py-2 text-[12px] text-txt-2">{availability.reason}</p>
       )}
 
       <button
