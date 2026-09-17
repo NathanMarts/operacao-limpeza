@@ -211,23 +211,6 @@ export function TipPanel() {
   );
 }
 
-export function QuoteBlock() {
-  return (
-    <div className="relative overflow-hidden rounded-xl border border-line bg-gradient-to-br from-[#12263a] via-[#0d1b2a] to-[#0a1520] p-5">
-      <div className="absolute inset-0 opacity-25" aria-hidden>
-        <div className="absolute bottom-0 left-0 right-0 h-20 bg-[#1b3550]" />
-        <div className="absolute bottom-6 left-6 h-16 w-28 rounded-sm bg-[#25456a]" />
-        <div className="absolute bottom-6 right-8 h-20 w-20 rounded-sm bg-[#1f3c5c]" />
-      </div>
-      <p className="relative mt-16 text-[14px] leading-snug text-txt-2">
-        Pequenas decisões,
-        <br />
-        grandes resultados.
-      </p>
-    </div>
-  );
-}
-
 /* ------------------------------------------------------------------ */
 /* Coluna da direita                                                   */
 /* ------------------------------------------------------------------ */
@@ -245,7 +228,7 @@ export function SequencePanel({ state }: { state: GameState }) {
 
   return (
     <Card title="Sua sequência" icon={Icon.sequencia}>
-      <ol className="max-h-[236px] space-y-1 overflow-y-auto pr-1">
+      <ol className="scroll-slim max-h-[236px] space-y-1 overflow-y-auto pr-1">
         {linhas.map((step, index) => {
           const ativo = index === atual - 1;
           return (

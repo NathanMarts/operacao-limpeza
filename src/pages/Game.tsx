@@ -7,7 +7,6 @@ import {
   Instructions,
   Legend,
   ObjectivePanel,
-  QuoteBlock,
   SequencePanel,
   SummaryPanel,
   TipPanel,
@@ -46,7 +45,6 @@ export function Game() {
             <ObjectivePanel />
             <Legend />
             <TipPanel />
-            <QuoteBlock />
           </aside>
         )}
 

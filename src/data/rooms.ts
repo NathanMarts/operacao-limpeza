@@ -51,7 +51,7 @@ export const rooms: RoomDef[] = [
   {
     id: 'WC-A', name: 'Banheiro norte', shortName: 'WC', kind: 'wc', side: 'top', tone: 'banheiro',
     corridorPosition: 62, baseCleaningMinutes: 3, materialCost: 2, cleanable: true,
-    spanStartMeters: 60, spanWidthMeters: 6, depth: 1,
+    spanStartMeters: 60, spanWidthMeters: 8.2, depth: 1,
   },
 
   // ----- Ala inferior -------------------------------------------------
@@ -93,7 +93,7 @@ export const rooms: RoomDef[] = [
   {
     id: 'WC-B', name: 'Banheiro sul', shortName: 'WC', kind: 'wc', side: 'bottom', tone: 'banheiro',
     corridorPosition: 62, baseCleaningMinutes: 3, materialCost: 2, cleanable: true,
-    spanStartMeters: 60, spanWidthMeters: 6, depth: 1,
+    spanStartMeters: 60, spanWidthMeters: 8.2, depth: 1,
   },
 ];
 

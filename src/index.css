@@ -76,3 +76,71 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+  Barra de rolagem. A nativa do Windows é clara e quadrada — destoa do tema.
+  Aqui: trilho invisível e polegar fino, que só ganha contraste no hover.
+*/
+/* Firefox não tem os pseudo-elementos ::-webkit-scrollbar. Só que declarar
+   scrollbar-width no Chrome o faz cair no desenho padrão e ignorar os
+   pseudo-elementos — inclusive o que esconde as setinhas. Por isso as
+   propriedades padrão ficam restritas a quem NÃO suporta ::-webkit-scrollbar. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #23374a transparent;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Some com as setinhas de incremento, que o Chrome ainda desenha no Windows. */
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #23374a;
+  border-radius: 999px;
+  /* A borda transparente com background-clip afina o polegar sem afinar a área
+     de clique — continua fácil de agarrar com o mouse. */
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #35526d;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Listas internas curtas pedem um polegar mais discreto ainda. */
+@supports not selector(::-webkit-scrollbar) {
+  .scroll-slim {
+    scrollbar-color: #1f3145 transparent;
+  }
+}
+
+.scroll-slim::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scroll-slim::-webkit-scrollbar-thumb {
+  background-color: #1f3145;
+  border-width: 2px;
+}
+
+.scroll-slim:hover::-webkit-scrollbar-thumb {
+  background-color: #2e4761;
+}

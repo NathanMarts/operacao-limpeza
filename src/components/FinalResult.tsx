@@ -65,7 +65,7 @@ export function FinalResult({ state, summary, history, onRestart, onClearHistory
 
         <section className="mt-6">
           <h3 className="text-[15px] font-semibold text-txt">Decomposição da partida</h3>
-          <div className="mt-3 overflow-x-auto rounded-xl border border-line">
+          <div className="scroll-slim mt-3 overflow-x-auto rounded-xl border border-line">
             <table className="w-full min-w-[620px] text-left text-[13px]">
               <thead className="bg-panel text-txt-2">
                 <tr>
