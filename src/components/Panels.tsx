@@ -1,46 +1,71 @@
+import type { ReactNode } from 'react';
 import { formatMinutes } from '../domain/effects';
 import { gameConfig } from '../data/gameConfig';
 import { objectives } from '../data/rooms';
-import type { GameState, LogEntry } from '../domain/types';
+import type { GameState } from '../domain/types';
 import type { Summary } from '../domain/game';
 
 /* ------------------------------------------------------------------ */
-/* Cabeçalho compacto: marca à esquerda, métricas da partida à direita  */
+
+export function Card({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
+  return (
+    <section className="rounded-xl border border-line bg-panel p-4">
+      <h2 className="flex items-center gap-2.5 text-[15px] font-semibold text-txt">
+        <span className="text-[17px] leading-none" aria-hidden>
+          {icon}
+        </span>
+        {title}
+      </h2>
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Cabeçalho: marca, abas e as duas métricas em cards                  */
 /* ------------------------------------------------------------------ */
 
 export function GameHeader({
   totalMinutes,
   distance,
   charges,
+  tab,
+  onTab,
 }: {
   totalMinutes: number;
   distance: number;
   charges: number;
+  tab: 'mapa' | 'instrucoes';
+  onTab: (next: 'mapa' | 'instrucoes') => void;
 }) {
   return (
-    <header className="relative z-10 flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-hairline px-5 py-3.5 sm:px-8">
-      <div className="flex items-center gap-3">
-        <span className="font-display text-lg leading-none text-brass" aria-hidden>
-          ▤
+    <header className="flex flex-wrap items-center gap-4 bg-header px-5 py-3.5 sm:px-6">
+      <div className="flex items-center gap-3.5">
+        <span className="text-[30px] leading-none" aria-hidden>
+          🧹
         </span>
         <div>
-          <h1 className="font-display text-[15px] font-bold leading-none tracking-tight text-ink-hi">
-            Operação Limpeza
-          </h1>
-          <p className="data mt-1 text-[9px] uppercase tracking-[0.18em] text-ink-low">
-            Planeje · Limpe · Otimize
-          </p>
+          <h1 className="text-[26px] font-bold leading-none tracking-tight text-txt">Operação Limpeza</h1>
+          <p className="mt-1 text-[13px] text-txt-2">Planeje. Limpe. Otimize.</p>
         </div>
       </div>
 
-      <div className="ml-auto flex items-center gap-6 sm:gap-8">
-        <Metrica icon="⏱" label="Tempo" value={formatMinutes(totalMinutes)} unit="min" />
-        <Metrica icon="📍" label="Distância" value={String(distance)} unit="m" />
-        <Metrica
+      <nav className="order-3 flex w-full gap-1 rounded-xl border border-line bg-panel-2 p-1.5 md:order-none md:mx-auto md:w-auto">
+        <Aba active={tab === 'mapa'} onClick={() => onTab('mapa')} icon="🗺️">
+          Mapa
+        </Aba>
+        <Aba active={tab === 'instrucoes'} onClick={() => onTab('instrucoes')} icon="🧭">
+          Instruções
+        </Aba>
+      </nav>
+
+      <div className="ml-auto flex flex-wrap gap-3">
+        <MetricCard icon="⏱️" label="Tempo total" value={`${formatMinutes(totalMinutes)} min`} />
+        <MetricCard icon="👣" label="Distância percorrida" value={`${distance} m`} />
+        <MetricCard
           icon="🧽"
           label="Material"
-          value={String(charges)}
-          unit={`/${gameConfig.maxCharges}`}
+          value={`${charges}/${gameConfig.maxCharges}`}
           alert={charges === 0}
         />
       </div>
@@ -48,29 +73,56 @@ export function GameHeader({
   );
 }
 
-function Metrica({
+function Aba({
+  active,
+  onClick,
+  icon,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: string;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? 'page' : undefined}
+      className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-[15px] font-medium transition-colors md:flex-none ${
+        active ? 'bg-accent-soft text-txt' : 'text-txt-2 hover:text-txt'
+      }`}
+    >
+      <span aria-hidden>{icon}</span>
+      {children}
+    </button>
+  );
+}
+
+function MetricCard({
   icon,
   label,
   value,
-  unit,
   alert,
 }: {
   icon: string;
   label: string;
   value: string;
-  unit: string;
   alert?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="text-[13px] opacity-50" aria-hidden>
+    <div
+      className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 ${
+        alert ? 'border-warn/50 bg-warn/10' : 'border-line bg-panel'
+      }`}
+    >
+      <span className="text-[20px]" aria-hidden>
         {icon}
       </span>
       <div>
-        <p className="data text-[9px] uppercase tracking-[0.16em] text-ink-low">{label}</p>
-        <p className={`data text-[17px] font-semibold leading-tight ${alert ? 'text-pending' : 'text-ink-hi'}`}>
+        <p className="text-[12px] leading-none text-txt-2">{label}</p>
+        <p className={`mt-1 text-[21px] font-bold leading-none ${alert ? 'text-warn' : 'text-txt'}`}>
           {value}
-          <span className="ml-0.5 text-[11px] font-normal text-ink-low">{unit}</span>
         </p>
       </div>
     </div>
@@ -78,242 +130,186 @@ function Metrica({
 }
 
 /* ------------------------------------------------------------------ */
-/* Briefing: objetivo e regras em uma tira, não num card               */
+/* Coluna da esquerda                                                  */
 /* ------------------------------------------------------------------ */
 
-export function Briefing() {
-  const material = objectives.reduce((total, room) => total + room.materialCost, 0);
+export function ObjectivePanel() {
   return (
-    <div className="flex flex-wrap items-center gap-x-7 gap-y-2 px-1 text-[12px] text-ink-low">
-      <p className="text-ink-mid">
-        Limpe os <strong className="font-semibold text-ink-hi">{objectives.length} ambientes</strong> no
-        menor tempo total.
+    <Card title="Objetivo" icon="🎯">
+      <p className="text-[13.5px] leading-relaxed text-txt-2">
+        Limpar todas as salas do bloco no menor tempo possível, considerando deslocamento, tempo de
+        limpeza e os eventos de cada sala.
       </p>
-      <Regra>1 min a cada {gameConfig.metersPerMinute} m percorridos</Regra>
-      <Regra>
-        carrinho leva {gameConfig.maxCharges}, limpar tudo custa {material}
-      </Regra>
-      <Regra>passar pelo depósito não recarrega — é preciso parar nele</Regra>
-    </div>
+    </Card>
   );
 }
 
-function Regra({ children }: { children: React.ReactNode }) {
+const LEGENDA: [string, string][] = [
+  ['#a6d6f9', 'Sala (grande)'],
+  ['#f9d89c', 'Sala (média)'],
+  ['#96e6cb', 'Sala (pequena)'],
+  ['#4fb6a8', 'Sala (estreita)'],
+  ['#c4b9f5', 'Banheiro / área técnica'],
+  ['#f6e9ad', 'Escada'],
+  ['#d5d4d4', 'Corredor'],
+];
+
+export function Legend() {
   return (
-    <span className="flex items-center gap-1.5">
-      <span className="text-brass-dim" aria-hidden>
-        ◆
-      </span>
+    <Card title="Legenda" icon="📐">
+      <ul className="space-y-2">
+        {LEGENDA.map(([color, label]) => (
+          <li key={label} className="flex items-center gap-3 text-[13.5px] text-txt-2">
+            <span className="h-4 w-6 rounded-[3px] border border-black/40" style={{ background: color }} />
+            {label}
+          </li>
+        ))}
+      </ul>
+      <ul className="mt-3 space-y-1.5 border-t border-line pt-3 text-[12.5px] text-txt-3">
+        <li className="flex items-center gap-2">
+          <Selo cor="#34d399">✓</Selo> concluída
+        </li>
+        <li className="flex items-center gap-2">
+          <Selo cor="#f0b429">◐</Selo> pendente, exige retorno
+        </li>
+        <li className="flex items-center gap-2">
+          <Selo cor="#5b6472">🔒</Selo> bloqueada por enquanto
+        </li>
+      </ul>
+    </Card>
+  );
+}
+
+function Selo({ cor, children }: { cor: string; children: ReactNode }) {
+  return (
+    <span
+      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] text-[#0b1822]"
+      style={{ background: cor }}
+      aria-hidden
+    >
       {children}
     </span>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Legenda: pertence ao desenho, então mora no rodapé do mapa          */
-/* ------------------------------------------------------------------ */
-
-export function MapLegend() {
-  const estados: [string, string, string][] = [
-    ['✓', 'concluída', 'text-done'],
-    ['◐', 'pendente', 'text-pending'],
-    ['🔒', 'bloqueada', 'text-blocked'],
-    ['▤', 'depósito', 'text-brass'],
-    ['●', 'você', 'text-player'],
-  ];
+export function TipPanel() {
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-hairline px-5 py-3 text-[11px]">
-      {estados.map(([glyph, label, color]) => (
-        <span key={label} className="flex items-center gap-1.5 text-ink-low">
-          <span className={color} aria-hidden>
-            {glyph}
-          </span>
-          {label}
-        </span>
-      ))}
-      <span className="ml-auto data text-[10px] text-ink-low">
-        números do corredor em metros a partir da entrada
-      </span>
+    <Card title="Dica" icon="💡">
+      <p className="text-[13.5px] leading-relaxed text-txt-2">
+        A ordem das salas, os eventos e o deslocamento fazem toda a diferença. Pense na sua
+        estratégia!
+      </p>
+    </Card>
+  );
+}
+
+export function QuoteBlock() {
+  return (
+    <div className="relative overflow-hidden rounded-xl border border-line bg-gradient-to-br from-[#12263a] via-[#0d1b2a] to-[#0a1520] p-5">
+      <div className="absolute inset-0 opacity-25" aria-hidden>
+        <div className="absolute bottom-0 left-0 right-0 h-20 bg-[#1b3550]" />
+        <div className="absolute bottom-6 left-6 h-16 w-28 rounded-sm bg-[#25456a]" />
+        <div className="absolute bottom-6 right-8 h-20 w-20 rounded-sm bg-[#1f3c5c]" />
+      </div>
+      <p className="relative mt-16 text-[14px] leading-snug text-txt-2">
+        Pequenas decisões,
+        <br />
+        grandes resultados.
+      </p>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Diário do turno: rota e consequências na mesma narrativa            */
+/* Coluna da direita                                                   */
 /* ------------------------------------------------------------------ */
 
-type Beat = { stop: number; roomName: string; entries: LogEntry[] };
-
-/** Agrupa o log por parada, para ler "sala → caminhada → situação → consequência". */
-function toBeats(state: GameState): Beat[] {
-  const beats: Beat[] = [];
-  for (const entry of state.log) {
-    const isArrival = entry.title.startsWith('Deslocamento');
-    if (isArrival || beats.length === 0) {
-      beats.push({
-        stop: beats.length + 1,
-        roomName: entry.roomId ? entry.title.replace('Deslocamento até ', '') : 'Corredor',
-        entries: [entry],
-      });
-    } else {
-      beats[beats.length - 1].entries.push(entry);
-    }
-  }
-  return beats;
-}
-
-export function TurnJournal({ state }: { state: GameState }) {
-  const beats = toBeats(state);
+export function SequencePanel({ state }: { state: GameState }) {
+  const total = objectives.length;
+  const linhas = Array.from({ length: total }, (_, index) => state.route[index] ?? null);
+  const atual = state.route.length;
 
   return (
-    <section>
-      <div className="flex items-baseline justify-between">
-        <h2 className="eyebrow">Diário do turno</h2>
-        <span className="data text-[10px] text-ink-low">{state.route.length} paradas</span>
-      </div>
-
-      {beats.length === 0 ? (
-        <p className="mt-4 text-[12.5px] text-ink-low">
-          Escolha um ambiente no mapa para começar. Cada decisão vai aparecer aqui com o que ela
-          custou.
-        </p>
-      ) : (
-        <ol className="mt-4 space-y-0">
-          {[...beats].reverse().map((beat) => (
-            <li key={beat.stop} className="relative flex gap-4 pb-5 last:pb-0">
-              {/* Linha do tempo */}
-              <div className="flex flex-col items-center">
-                <span className="data flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-2 text-[10px] font-semibold text-player ring-1 ring-hairline">
-                  {beat.stop}
+    <Card title="Sua sequência" icon="🧭">
+      <ol className="space-y-1.5">
+        {linhas.map((step, index) => {
+          const ativo = index === atual - 1;
+          return (
+            <li
+              key={index}
+              className={`flex items-center gap-3 rounded-lg px-2.5 py-1.5 ${
+                ativo ? 'bg-row-active ring-1 ring-accent/50' : ''
+              }`}
+            >
+              <span
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                  step ? 'bg-accent text-white' : 'bg-btn text-txt-3'
+                }`}
+              >
+                {index + 1}
+              </span>
+              <span className={`flex-1 truncate text-[14px] ${step ? 'text-txt' : 'text-txt-3'}`}>
+                {step ? step.roomName : '—'}
+              </span>
+              {step && (
+                <span className="shrink-0 text-[12.5px] tabular-nums text-txt-2">
+                  {step.distance} m
+                  {step.purpose === 'retorno' && <span className="text-warn"> ↩</span>}
+                  {step.purpose === 'deposito' && <span className="text-ok"> ⟳</span>}
                 </span>
-                <span className="mt-1 w-px flex-1 bg-hairline" />
-              </div>
-
-              <div className="min-w-0 flex-1 pt-0.5">
-                <p className="font-display text-[13px] font-semibold text-ink-hi">{beat.roomName}</p>
-                <ul className="mt-1.5 space-y-1.5">
-                  {beat.entries.map((entry) => (
-                    <li key={entry.index} className="text-[12px] leading-snug">
-                      <span className="text-ink-mid">{entry.detail}</span>
-                      <span className="data ml-2 whitespace-nowrap text-[11px]">
-                        {entry.deltaDistance > 0 && (
-                          <span className="text-player">+{entry.deltaDistance} m </span>
-                        )}
-                        {entry.deltaCleaning > 0 && (
-                          <span className="text-ink-low">+{entry.deltaCleaning}′ </span>
-                        )}
-                        {entry.deltaEvent > 0 && (
-                          <span className="text-pending">+{entry.deltaEvent}′ </span>
-                        )}
-                        {entry.deltaIdle > 0 && (
-                          <span className="text-blocked">+{entry.deltaIdle}′ ocioso </span>
-                        )}
-                        {entry.deltaCharges !== 0 && (
-                          <span className="text-brass">
-                            {entry.deltaCharges > 0 ? '+' : ''}
-                            {entry.deltaCharges} carga{Math.abs(entry.deltaCharges) === 1 ? '' : 's'}
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="data mt-1.5 text-[10px] text-ink-low">
-                  total → {formatMinutes(beat.entries[beat.entries.length - 1].totalAfter)} min
-                </p>
-              </div>
+              )}
             </li>
-          ))}
-        </ol>
+          );
+        })}
+      </ol>
+      {state.route.length > total && (
+        <p className="mt-2 text-center text-[12px] text-txt-3">
+          + {state.route.length - total} paradas extras (retornos e recargas)
+        </p>
       )}
-    </section>
+    </Card>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Resumo da partida                                                   */
-/* ------------------------------------------------------------------ */
-
-export function ProgressPanel({ summary }: { summary: Summary }) {
-  const feitos = summary.concluidas.length;
+export function SummaryPanel({ summary }: { summary: Summary }) {
+  const linhas: [string, string][] = [
+    ['Salas limpas', `${summary.concluidas.length} / ${summary.totalObjectives}`],
+    ['Tempo de limpeza', `${formatMinutes(summary.cleaningMinutes)} min`],
+    ['Distância percorrida', `${summary.distanceTraveled} m`],
+    ['Tempo de deslocamento', `${formatMinutes(summary.travelMinutes)} min`],
+    ['Eventos (decisões)', `${formatMinutes(summary.eventMinutes)} min`],
+  ];
+  if (summary.pendentes.length > 0) {
+    linhas.push(['Pendências', String(summary.pendentes.length)]);
+  }
+  if (summary.idleMinutes > 0) {
+    linhas.push(['Tempo ocioso', `${formatMinutes(summary.idleMinutes)} min`]);
+  }
 
   return (
-    <section>
-      <h2 className="eyebrow">Progresso</h2>
-
-      <p className="mt-3 font-display text-[34px] font-bold leading-none tracking-tight text-ink-hi">
-        {feitos}
-        <span className="text-[18px] font-medium text-ink-low">/{summary.totalObjectives}</span>
-      </p>
-      <p className="mt-1 text-[11.5px] text-ink-low">ambientes concluídos</p>
-
-      {/* Progresso por ambiente, cada traço é um objetivo */}
-      <div className="mt-3 flex gap-1" aria-hidden>
-        {Array.from({ length: summary.totalObjectives }).map((_, index) => (
-          <span
-            key={index}
-            className={`h-1 flex-1 rounded-full ${
-              index < feitos
-                ? 'bg-done'
-                : index < feitos + summary.pendentes.length
-                  ? 'bg-pending'
-                  : 'bg-surface-3'
-            }`}
-          />
+    <Card title="Resumo atual" icon="📊">
+      <dl className="space-y-2.5">
+        {linhas.map(([label, value]) => (
+          <div key={label} className="flex items-baseline justify-between gap-3">
+            <dt className="text-[13.5px] text-txt-2">{label}</dt>
+            <dd className="text-[13.5px] font-semibold tabular-nums text-txt">{value}</dd>
+          </div>
         ))}
-      </div>
-      {summary.pendentes.length > 0 && (
-        <p className="mt-2 flex items-center gap-1.5 text-[11.5px] text-pending">
-          <span aria-hidden>◐</span>
-          {summary.pendentes.length} com pendência
-        </p>
-      )}
-
-      <div className="my-5 rule-brass opacity-50" />
-
-      <h2 className="eyebrow">De onde vem o tempo</h2>
-      <dl className="mt-3 space-y-2">
-        <Parcela label="Limpeza" value={summary.cleaningMinutes} total={summary.totalMinutes} tone="bg-ink-low" />
-        <Parcela label="Deslocamento" value={summary.travelMinutes} total={summary.totalMinutes} tone="bg-player" />
-        <Parcela label="Decisões" value={summary.eventMinutes} total={summary.totalMinutes} tone="bg-pending" />
-        {summary.idleMinutes > 0 && (
-          <Parcela label="Ocioso" value={summary.idleMinutes} total={summary.totalMinutes} tone="bg-blocked" />
-        )}
       </dl>
 
-      <div className="mt-5 flex items-baseline justify-between">
-        <span className="text-[12px] text-ink-mid">Tempo total</span>
-        <span className="data text-xl font-semibold text-ink-hi">
-          {formatMinutes(summary.totalMinutes)} min
+      <div className="mt-4 flex items-center gap-3 rounded-lg bg-total-box px-4 py-3">
+        <span className="text-[20px]" aria-hidden>
+          🕐
         </span>
+        <div>
+          <p className="text-[12.5px] leading-none text-txt-2">Tempo total atual</p>
+          <p className="mt-1 text-[22px] font-bold leading-none text-txt">
+            {formatMinutes(summary.totalMinutes)} min
+          </p>
+        </div>
       </div>
       <ShiftBar total={summary.totalMinutes} reference={summary.referenceShiftMinutes} />
-    </section>
-  );
-}
-
-function Parcela({
-  label,
-  value,
-  total,
-  tone,
-}: {
-  label: string;
-  value: number;
-  total: number;
-  tone: string;
-}) {
-  const pct = total > 0 ? (value / total) * 100 : 0;
-  return (
-    <div>
-      <div className="flex items-baseline justify-between text-[11.5px]">
-        <dt className="text-ink-low">{label}</dt>
-        <dd className="data text-ink-mid">{formatMinutes(value)} min</dd>
-      </div>
-      <div className="mt-1 h-[3px] w-full overflow-hidden rounded-full bg-surface-3">
-        <div className={`h-full rounded-full ${tone} transition-all duration-500`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
+    </Card>
   );
 }
 
@@ -321,17 +317,49 @@ export function ShiftBar({ total, reference }: { total: number; reference: numbe
   const pct = Math.min(100, (total / reference) * 100);
   const over = total > reference;
   return (
-    <div className="mt-2.5">
-      <div className="h-1 w-full overflow-hidden rounded-full bg-surface-3">
+    <div className="mt-3">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-btn">
         <div
-          className={`h-full rounded-full transition-all duration-500 ${over ? 'bg-pending' : 'bg-done'}`}
+          className={`h-full rounded-full transition-all duration-500 ${over ? 'bg-warn' : 'bg-ok'}`}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="data mt-1.5 text-[10px] text-ink-low">
-        turno de referência {reference} min
-        {over && <span className="text-pending"> · ultrapassado</span>}
+      <p className="mt-1.5 text-[11.5px] text-txt-3">
+        Turno de referência: {reference} min
+        {over && <span className="text-warn"> · ultrapassado</span>}
       </p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+export function Instructions() {
+  const material = objectives.reduce((total, room) => total + room.materialCost, 0);
+  const itens: [string, string][] = [
+    ['Escolha uma sala no mapa', 'Você vê a distância e o tempo de limpeza antes de confirmar.'],
+    ['Confirme para ir', `A caminhada custa 1 min a cada ${gameConfig.metersPerMinute} m — e é cobrada na hora.`],
+    ['Resolva a situação', 'Três formas de agir sobre o mesmo problema. Nenhuma é melhor em tudo.'],
+    ['Cuide do material', `O carrinho leva ${gameConfig.maxCharges} cargas e limpar tudo custa ${material}. Parar no depósito é obrigatório — passar por ele não recarrega.`],
+    ['Volte quando precisar', 'Pendências exigem retorno, e o caminho de volta é cobrado igual.'],
+  ];
+
+  return (
+    <div className="rounded-xl border border-line bg-panel p-6">
+      <h2 className="text-[19px] font-bold text-txt">Como jogar</h2>
+      <ol className="mt-5 space-y-4">
+        {itens.map(([titulo, texto], index) => (
+          <li key={titulo} className="flex gap-4">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[13px] font-semibold text-txt">
+              {index + 1}
+            </span>
+            <div>
+              <p className="text-[14.5px] font-semibold text-txt">{titulo}</p>
+              <p className="mt-0.5 text-[13.5px] leading-relaxed text-txt-2">{texto}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

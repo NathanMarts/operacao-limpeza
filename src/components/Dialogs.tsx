@@ -1,31 +1,37 @@
-import type { ReactNode } from 'react';
 import { formatMinutes, type ActionSummary, type Availability } from '../domain/effects';
 import { travelMinutes } from '../domain/movement';
 import type { RoomDef, RoomState, SituationAction, SituationDef } from '../domain/types';
 import { SituationCard } from './SituationCard';
 
-function Overlay({
-  children,
-  labelledBy,
-  wide,
-}: {
-  children: ReactNode;
-  labelledBy: string;
-  wide?: boolean;
-}) {
+/** Miniatura da sala, igual ao card de prévia do mockup. */
+function RoomThumb({ room }: { room: RoomDef }) {
+  const TONE: Record<string, string> = {
+    grande: '#a6d6f9',
+    media: '#f9d89c',
+    pequena: '#96e6cb',
+    estreita: '#4fb6a8',
+    banheiro: '#c4b9f5',
+    tecnica: '#c9bdf3',
+  };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/85 p-4 backdrop-blur-md">
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={labelledBy}
-        className={`max-h-[92vh] w-full overflow-y-auto rounded-xl bg-surface ring-1 ring-hairline ${
-          wide ? 'max-w-5xl' : 'max-w-lg'
-        }`}
+    <svg viewBox="0 0 90 96" className="h-[96px] w-[90px]" aria-hidden>
+      <rect x="18" y="4" width="54" height="86" fill="#ffffff" />
+      <rect x="18" y="4" width="54" height="86" fill={TONE[room.tone]} />
+      <rect x="18" y="4" width="54" height="86" fill="none" stroke="#1e1e1e" strokeWidth="2" />
+      <rect x="36" y="88" width="18" height="4" fill="#ffffff" />
+      <path d="M 36 90 a 18 18 0 0 1 18 0" fill="none" stroke="#1e1e1e" strokeWidth="1" opacity="0.6" />
+      <text
+        x="45"
+        y="50"
+        textAnchor="middle"
+        fontFamily="Inter, sans-serif"
+        fontSize="14"
+        fontWeight="700"
+        fill="#16232b"
       >
-        {children}
-      </div>
-    </div>
+        {room.shortName}
+      </text>
+    </svg>
   );
 }
 
@@ -43,7 +49,6 @@ type ConfirmProps = {
   onCancel: () => void;
 };
 
-/** Último ponto de arrependimento: depois daqui o deslocamento está pago. */
 export function RoomConfirmDialog({
   room,
   roomState,
@@ -55,104 +60,97 @@ export function RoomConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmProps) {
-  const minutosLimpeza = isDeposito ? refillMinutes : cleaningMinutes;
-  const minutosViagem = travelMinutes(distance);
+  const minutos = isDeposito ? refillMinutes : cleaningMinutes;
 
   return (
-    <Overlay labelledBy="confirm-title">
-      <div className="p-6">
-        <span className="eyebrow">Próximo destino</span>
-        <h3 id="confirm-title" className="mt-1.5 font-display text-2xl font-bold tracking-tight text-ink-hi">
-          {room.name}
-        </h3>
-
-        {isReturn && (
-          <p className="mt-3 flex items-start gap-2 text-[12.5px] text-pending">
-            <span aria-hidden>◐</span>
-            <span>Retorno para fechar a pendência. Sem nova situação e sem gastar material.</span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        className="w-full max-w-md rounded-2xl border border-line bg-modal p-6"
+      >
+        <div className="flex flex-col items-center rounded-xl bg-modal-card p-5">
+          <RoomThumb room={room} />
+          <p className="mt-3 text-[14px] text-txt-2">Você está indo para a</p>
+          <p id="confirm-title" className="text-[22px] font-bold text-txt">
+            {room.name}
           </p>
-        )}
-        {isDeposito && (
-          <p className="mt-3 flex items-start gap-2 text-[12.5px] text-brass">
-            <span aria-hidden>▤</span>
-            <span>Parada de recarga. O carrinho volta cheio.</span>
-          </p>
-        )}
 
-        <div className="mt-6 space-y-3">
-          <Linha
-            label="Caminhada até lá"
-            value={`${distance} m`}
-            detail={`${formatMinutes(minutosViagem)} min`}
-            accent
-          />
-          <Linha
-            label={isDeposito ? 'Recarga' : isReturn ? 'Serviço restante' : 'Limpeza prevista'}
-            value={`${minutosLimpeza} min`}
-            detail={
-              !isDeposito && roomState.extraDirtMinutes > 0
-                ? `inclui +${roomState.extraDirtMinutes} min de sujeira acumulada`
-                : undefined
-            }
-          />
-          <div className="rule-brass opacity-40" />
-          <div className="flex items-baseline justify-between">
-            <span className="eyebrow">Custo mínimo desta parada</span>
-            <span className="data text-lg font-semibold text-ink-hi">
-              {formatMinutes(minutosViagem + minutosLimpeza)} min
-            </span>
+          <div className="mt-5 w-full space-y-4 border-t border-line pt-4">
+            <Linha icon="👣" label="Deslocamento" value={`+ ${distance} m`} detail={`${formatMinutes(travelMinutes(distance))} min de caminhada`} />
+            <Linha
+              icon="🕐"
+              label={isDeposito ? 'Recarga do carrinho' : isReturn ? 'Serviço restante' : 'Tempo base de limpeza'}
+              value={`${minutos} min`}
+              detail={
+                !isDeposito && roomState.extraDirtMinutes > 0
+                  ? `inclui +${roomState.extraDirtMinutes} min de sujeira acumulada`
+                  : undefined
+              }
+            />
           </div>
         </div>
 
+        {isReturn && (
+          <p className="mt-4 rounded-lg bg-warn/10 px-3 py-2 text-[12.5px] text-warn">
+            Retorno de pendência: conclui direto, sem nova situação e sem gastar material.
+          </p>
+        )}
+        {isDeposito && (
+          <p className="mt-4 rounded-lg bg-ok/10 px-3 py-2 text-[12.5px] text-ok">
+            Parada no depósito. O carrinho volta cheio.
+          </p>
+        )}
         {!isDeposito && !isReturn && (
-          <p className="mt-5 text-[11.5px] leading-relaxed text-ink-low">
-            Ao confirmar, a caminhada já conta no seu tempo e você precisa resolver o que encontrar
-            na sala. Ainda dá para escolher outro destino.
+          <p className="mt-4 text-[12.5px] leading-relaxed text-txt-3">
+            Ao confirmar, a caminhada já conta no seu tempo e será preciso resolver a situação da sala.
           </p>
         )}
 
-        <div className="mt-6 flex gap-3">
+        <div className="mt-5 flex gap-3">
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 rounded-md py-2.5 font-display text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-mid ring-1 ring-hairline transition-colors hover:bg-surface-2"
+            className="flex-1 rounded-lg border border-line py-2.5 text-[14px] font-medium text-txt-2 transition-colors hover:bg-btn"
           >
-            Ver outra sala
+            Escolher outra
           </button>
           <button
             type="button"
             onClick={onConfirm}
             autoFocus
-            className="flex-1 rounded-md bg-player py-2.5 font-display text-[12px] font-semibold uppercase tracking-[0.14em] text-bg transition-opacity hover:opacity-90"
+            className="flex-1 rounded-lg bg-accent py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#6189f5]"
           >
-            Ir para lá
+            Confirmar e ir
           </button>
         </div>
       </div>
-    </Overlay>
+    </div>
   );
 }
 
 function Linha({
+  icon,
   label,
   value,
   detail,
-  accent,
 }: {
+  icon: string;
   label: string;
   value: string;
   detail?: string;
-  accent?: boolean;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-4">
-      <span className="text-[12.5px] text-ink-mid">{label}</span>
-      <span className="text-right">
-        <span className={`data text-[15px] font-semibold ${accent ? 'text-player' : 'text-ink-hi'}`}>
-          {value}
-        </span>
-        {detail && <span className="data block text-[11px] text-ink-low">{detail}</span>}
+    <div className="flex items-center gap-3">
+      <span className="text-[20px]" aria-hidden>
+        {icon}
       </span>
+      <div>
+        <p className="text-[12.5px] leading-none text-txt-2">{label}</p>
+        <p className="mt-1 text-[19px] font-bold leading-none text-txt">{value}</p>
+        {detail && <p className="mt-1 text-[11.5px] text-txt-3">{detail}</p>}
+      </div>
     </div>
   );
 }
@@ -162,45 +160,65 @@ function Linha({
 type SituationProps = {
   situation: SituationDef;
   room: RoomDef;
+  distance: number;
+  cleaningMinutes: number;
   cards: { action: SituationAction; summary: ActionSummary; availability: Availability }[];
   onChoose: (actionId: string) => void;
 };
 
-export function SituationDialog({ situation, room, cards, onChoose }: SituationProps) {
+export function SituationDialog({
+  situation,
+  room,
+  distance,
+  cleaningMinutes,
+  cards,
+  onChoose,
+}: SituationProps) {
   return (
-    <Overlay labelledBy="situation-title" wide>
-      <div className="p-6 sm:p-7">
-        <header className="max-w-2xl">
-          <span className="eyebrow">Você chegou · {room.name}</span>
-          <h3
-            id="situation-title"
-            className="mt-1.5 font-display text-[28px] font-bold leading-none tracking-tight text-ink-hi"
-          >
-            {situation.title}
-          </h3>
-          <p className="mt-3 text-[13.5px] leading-relaxed text-ink-mid">{situation.prompt}</p>
-        </header>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-3 sm:items-center sm:p-6">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="situation-title"
+        className="max-h-[94vh] w-full max-w-6xl overflow-y-auto rounded-2xl border border-line bg-modal p-5 sm:p-6"
+      >
+        <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+          {/* Prévia da sala, como no mockup */}
+          <aside className="flex flex-col items-center rounded-xl bg-modal-card p-5">
+            <RoomThumb room={room} />
+            <p className="mt-3 text-center text-[13.5px] text-txt-2">Você está em</p>
+            <p className="text-center text-[19px] font-bold text-txt">{room.name}</p>
+            <div className="mt-5 w-full space-y-4 border-t border-line pt-4">
+              <Linha icon="👣" label="Deslocamento" value={`+ ${distance} m`} />
+              <Linha icon="🕐" label="Tempo base de limpeza" value={`${cleaningMinutes} min`} />
+            </div>
+          </aside>
 
-        <div className="my-6 rule-brass" />
+          <div>
+            <h3 id="situation-title" className="text-[23px] font-bold leading-tight text-txt">
+              {situation.title}
+            </h3>
+            <p className="mt-1.5 text-[14px] leading-relaxed text-txt-2">{situation.prompt}</p>
+            <p className="mt-1 text-[13px] text-txt-3">
+              Escolha como agir. As três opções resolvem o mesmo problema de formas diferentes —
+              nenhuma é melhor em tudo.
+            </p>
 
-        <p className="mb-4 text-[12px] text-ink-low">
-          Três formas de resolver o mesmo problema. Compare o que cada uma cobra{' '}
-          <span className="text-ink-mid">agora</span> com o que ela deixa para{' '}
-          <span className="text-ink-mid">depois</span> — nenhuma é melhor em tudo.
-        </p>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          {cards.map((card) => (
-            <SituationCard
-              key={card.action.id}
-              action={card.action}
-              summary={card.summary}
-              availability={card.availability}
-              onChoose={onChoose}
-            />
-          ))}
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              {cards.map((card, index) => (
+                <SituationCard
+                  key={card.action.id}
+                  action={card.action}
+                  summary={card.summary}
+                  availability={card.availability}
+                  index={index}
+                  onChoose={onChoose}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
-    </Overlay>
+    </div>
   );
 }

@@ -102,9 +102,10 @@ describe('renderização dos componentes', () => {
     }
     // A planta desenhada, não uma imagem clicável.
     expect(html).not.toContain('<image');
-    // Marco zero e regua metrica do corredor.
-    expect(html).toContain('ENTRADA');
-    expect(html).toContain('60 m');
+    // Marco zero e cotas de cada trecho do corredor.
+    expect(html).toContain('ENTRADA (0 m)');
+    expect(html).toContain('10m');
+    expect(html).toContain('7m');
   });
 
   it('o modal de situação mostra as três cartas com seus efeitos', () => {
@@ -122,6 +123,8 @@ describe('renderização dos componentes', () => {
       createElement(SituationDialog, {
         situation,
         room,
+        distance: 42,
+        cleaningMinutes: 6,
         cards: situation.actions.map((action) => ({
           action,
           summary: summarizeAction(action, ctx),

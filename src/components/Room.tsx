@@ -1,17 +1,16 @@
 import type { RoomDef, RoomState, RoomTone } from '../domain/types';
 
-/**
- * Tom do ambiente: aparece como uma lavagem discreta, só o bastante para o
- * desenho ler como planta. Saturação forte fica reservada para ESTADO.
- */
+/** Cores da planta, amostradas de Prototipo/prototipo.png. */
 const TONE: Record<RoomTone, string> = {
-  grande: '#5eb0e8',
-  media: '#e8a668',
-  pequena: '#5fc99a',
-  estreita: '#3fa896',
-  banheiro: '#37988c',
-  tecnica: '#9d8ce0',
+  grande: '#a6d6f9',
+  media: '#f9d89c',
+  pequena: '#96e6cb',
+  estreita: '#4fb6a8',
+  banheiro: '#c4b9f5',
+  tecnica: '#c9bdf3',
 };
+
+const PAREDE = '#1e1e1e';
 
 export type RoomVisualState =
   | 'disponivel'
@@ -22,13 +21,6 @@ export type RoomVisualState =
   | 'apoio';
 
 export type RoomGeometry = { x: number; y: number; width: number; height: number; doorX: number };
-
-/** Glifo de estado: o mapa não depende só de cor para ser lido. */
-const GLYPH: Partial<Record<RoomVisualState, string>> = {
-  concluida: '✓',
-  pendente: '◐',
-  bloqueada: '🔒',
-};
 
 type Props = {
   room: RoomDef;
@@ -50,41 +42,35 @@ export function Room({
   onSelect,
 }: Props) {
   const interactive = visual === 'disponivel' || visual === 'pendente' || visual === 'apoio';
-  const tone = TONE[room.tone];
+  const { x, y, width, height, doorX } = geometry;
+  const cx = x + width / 2;
+  const cy = y + height / 2;
+  const tall = height > 50;
 
-  const stateStroke: Record<RoomVisualState, string> = {
-    disponivel: 'rgba(147,163,184,0.45)',
-    destino: '#5ea9ff',
-    concluida: 'rgba(52,211,153,0.55)',
-    pendente: '#f59e0b',
-    bloqueada: 'rgba(107,122,143,0.4)',
-    apoio: 'rgba(201,162,39,0.5)',
-  };
+  /* O estado muda saturação e contorno; a planta segue clara em todos eles. */
+  const fill = TONE[room.tone];
+  const fillOpacity = visual === 'concluida' ? 0.4 : visual === 'bloqueada' ? 0.3 : 1;
+  const stroke = visual === 'destino' ? '#4f7df3' : visual === 'pendente' ? '#e08a1e' : PAREDE;
+  const strokeWidth = visual === 'destino' ? 3 : visual === 'pendente' ? 2.5 : 1.75;
+  const textoEscuro = visual === 'bloqueada' ? '#5b6472' : '#16232b';
 
-  const fillOpacity =
-    visual === 'concluida' ? 0.07 : visual === 'bloqueada' ? 0.05 : visual === 'apoio' ? 0.08 : 0.2;
-
-  const cx = geometry.x + geometry.width / 2;
-  const cy = geometry.y + geometry.height / 2;
-  const glyph = GLYPH[visual];
-  const tall = geometry.height > 52;
+  const aria =
+    `${room.name}. ` +
+    (visual === 'concluida'
+      ? 'Concluída.'
+      : visual === 'pendente'
+        ? `Pendente, restam ${roomState.residualMinutes} minutos.`
+        : visual === 'bloqueada'
+          ? `Bloqueada por cerca de ${Math.ceil(minutesUntilFree)} minutos.`
+          : visual === 'apoio'
+            ? 'Depósito, parada de reabastecimento.'
+            : `Disponível, ${cleaningMinutes} minutos de limpeza.`);
 
   return (
     <g
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
-      aria-label={
-        `${room.name}. ` +
-        (visual === 'concluida'
-          ? 'Concluída.'
-          : visual === 'pendente'
-            ? `Pendente, restam ${roomState.residualMinutes} minutos.`
-            : visual === 'bloqueada'
-              ? `Bloqueada por cerca de ${Math.ceil(minutesUntilFree)} minutos.`
-              : visual === 'apoio'
-                ? 'Depósito, parada de reabastecimento.'
-                : `Disponível, ${cleaningMinutes} minutos de limpeza.`)
-      }
+      aria-label={aria}
       aria-disabled={!interactive}
       className={interactive ? 'cursor-pointer' : 'cursor-not-allowed'}
       onClick={() => interactive && onSelect(room.id)}
@@ -95,147 +81,133 @@ export function Room({
         }
       }}
     >
-      {/* Base sólida: sem ela o tom a baixa opacidade some no fundo quase preto
-          e a planta vira um bloco de buracos escuros. */}
-      <rect
-        x={geometry.x}
-        y={geometry.y}
-        width={geometry.width}
-        height={geometry.height}
-        rx={2}
-        fill="#0f151e"
-      />
+      {/* Miolo branco: garante que o pastel apareça igual ao mockup */}
+      <rect x={x} y={y} width={width} height={height} fill="#ffffff" />
+      <rect x={x} y={y} width={width} height={height} fill={fill} fillOpacity={fillOpacity} />
 
-      {/* Corpo do ambiente */}
-      <rect
-        x={geometry.x}
-        y={geometry.y}
-        width={geometry.width}
-        height={geometry.height}
-        rx={2}
-        fill={tone}
-        fillOpacity={fillOpacity}
-        stroke={stateStroke[visual]}
-        strokeWidth={visual === 'destino' ? 2.5 : 1.25}
-        strokeDasharray={visual === 'apoio' ? '5 3' : undefined}
-        className="transition-all duration-200"
-      />
-
-      {/* Hachura de arquitetura: pendente = meio traço, bloqueada = trama cruzada */}
       {visual === 'pendente' && (
-        <rect x={geometry.x} y={geometry.y} width={geometry.width} height={geometry.height} rx={2} fill="url(#hatch-pendente)" pointerEvents="none" />
+        <rect x={x} y={y} width={width} height={height} fill="url(#hachura-pendente)" pointerEvents="none" />
       )}
       {visual === 'bloqueada' && (
-        <rect x={geometry.x} y={geometry.y} width={geometry.width} height={geometry.height} rx={2} fill="url(#hatch-bloqueada)" pointerEvents="none" />
+        <rect x={x} y={y} width={width} height={height} fill="url(#hachura-bloqueada)" pointerEvents="none" />
       )}
 
-      {/* Realce do destino escolhido */}
-      {visual === 'destino' && (
-        <rect
-          x={geometry.x - 3}
-          y={geometry.y - 3}
-          width={geometry.width + 6}
-          height={geometry.height + 6}
-          rx={4}
-          fill="none"
-          stroke="#5ea9ff"
-          strokeWidth={1}
-          strokeDasharray="3 3"
-          className="destino-pulse"
-          pointerEvents="none"
-        />
-      )}
+      <rect x={x} y={y} width={width} height={height} fill="none" stroke={stroke} strokeWidth={strokeWidth} />
 
-      {/* Vão da porta: a posição lógica usada no cálculo de deslocamento */}
+      {/* Cabines dos banheiros, como no desenho original */}
+      {room.kind === 'wc' &&
+        Array.from({ length: 3 }).map((_, index) => (
+          <rect
+            key={index}
+            x={x + 5}
+            y={y + 6 + index * ((height - 12) / 3)}
+            width={15}
+            height={(height - 12) / 3 - 4}
+            fill="#48a39a"
+            stroke={PAREDE}
+            strokeWidth={1}
+            pointerEvents="none"
+          />
+        ))}
+
+      {/* Vão e folha da porta, exatamente na posição usada no cálculo */}
       <rect
-        x={geometry.doorX - 7}
-        y={room.side === 'top' ? geometry.y + geometry.height - 2 : geometry.y}
-        width={14}
-        height={2}
-        fill="#080b11"
+        x={doorX - 9}
+        y={room.side === 'top' ? y + height - strokeWidth / 2 - 1 : y - strokeWidth / 2 - 1}
+        width={18}
+        height={strokeWidth + 2}
+        fill="#ffffff"
         pointerEvents="none"
       />
       <path
         d={
           room.side === 'top'
-            ? `M ${geometry.doorX - 7} ${geometry.y + geometry.height - 1} a 14 14 0 0 1 14 0`
-            : `M ${geometry.doorX - 7} ${geometry.y + 1} a 14 14 0 0 0 14 0`
+            ? `M ${doorX - 9} ${y + height} a 18 18 0 0 1 18 0`
+            : `M ${doorX - 9} ${y} a 18 18 0 0 0 18 0`
         }
         fill="none"
-        stroke={stateStroke[visual]}
-        strokeWidth={0.75}
-        opacity={0.55}
+        stroke={PAREDE}
+        strokeWidth={1}
+        opacity={0.65}
         pointerEvents="none"
       />
 
-      {/* Rótulo */}
+      {/* Rótulo em duas linhas: nome e minutos, como no mockup */}
       <text
         x={cx}
-        y={cy - (tall ? 5 : 3)}
+        y={tall ? cy - 1 : cy + 3}
         textAnchor="middle"
-        fontFamily="Space Grotesk, sans-serif"
-        fontSize="13"
-        fontWeight="600"
+        fontFamily="Inter, sans-serif"
+        fontSize={room.kind === 'deposito' ? 9 : 13}
+        fontWeight="700"
+        fill={textoEscuro}
         pointerEvents="none"
-        fill={visual === 'concluida' || visual === 'bloqueada' ? '#6b7a8f' : '#e9eff7'}
       >
         {room.shortName}
       </text>
 
-      {tall && room.cleanable && visual !== 'bloqueada' && (
+      {tall && room.cleanable && (
+        <text
+          x={cx}
+          y={cy + 15}
+          textAnchor="middle"
+          fontFamily="Inter, sans-serif"
+          fontSize="10"
+          fontWeight="500"
+          fill={visual === 'pendente' ? '#8a5206' : '#3c4a57'}
+          pointerEvents="none"
+        >
+          {visual === 'pendente'
+            ? `restam ${roomState.residualMinutes} min`
+            : visual === 'bloqueada'
+              ? `~${Math.ceil(minutesUntilFree)} min`
+              : `${cleaningMinutes} min`}
+        </text>
+      )}
+
+      {/* Selos de estado: legíveis sem depender de cor */}
+      {visual === 'concluida' && (
+        <g pointerEvents="none">
+          <circle cx={x + width - 12} cy={y + 12} r={8} fill="#34d399" />
+          <path
+            d={`M ${x + width - 16} ${y + 12} l 3 3.5 l 6 -7`}
+            fill="none"
+            stroke="#06281c"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </g>
+      )}
+      {visual === 'pendente' && (
+        <g pointerEvents="none">
+          <circle cx={x + width - 12} cy={y + 12} r={8} fill="#f0b429" />
+          <path d={`M ${x + width - 12} ${y + 5} a 7 7 0 0 0 0 14 z`} fill="#4a2f02" />
+        </g>
+      )}
+      {visual === 'bloqueada' && (
+        <g pointerEvents="none">
+          <circle cx={x + width - 12} cy={y + 12} r={8} fill="#5b6472" />
+          <rect x={x + width - 16} y={y + 11} width={8} height={6} rx={1} fill="#e8edf2" />
+          <path
+            d={`M ${x + width - 14.5} ${y + 11} v -2.5 a 2.5 2.5 0 0 1 5 0 v 2.5`}
+            fill="none"
+            stroke="#e8edf2"
+            strokeWidth={1.5}
+          />
+        </g>
+      )}
+
+      {room.kind === 'deposito' && (
         <text
           x={cx}
           y={cy + 11}
           textAnchor="middle"
-          fontFamily="IBM Plex Mono, monospace"
-          fontSize="9"
+          fontFamily="Inter, sans-serif"
+          fontSize="7"
+          fontWeight="600"
+          fill="#4a3d6b"
           pointerEvents="none"
-          fill={visual === 'pendente' ? '#f59e0b' : visual === 'concluida' ? '#4b5a6d' : '#93a3b8'}
-        >
-          {visual === 'pendente' ? `restam ${roomState.residualMinutes}′` : `${cleaningMinutes}′`}
-        </text>
-      )}
-
-      {tall && visual === 'bloqueada' && (
-        <text
-          x={cx}
-          y={cy + 11}
-          textAnchor="middle"
-          fontFamily="IBM Plex Mono, monospace"
-          fontSize="9"
-          pointerEvents="none"
-          fill="#8b98a8"
-        >
-          ~{Math.ceil(minutesUntilFree)}′
-        </text>
-      )}
-
-      {/* Glifo de estado, ancorado no canto — legível sem depender de cor */}
-      {glyph && (
-        <text
-          x={geometry.x + geometry.width - 7}
-          y={room.side === 'top' ? geometry.y + 14 : geometry.y + geometry.height - 6}
-          textAnchor="middle"
-          fontFamily="Space Grotesk, sans-serif"
-          fontSize="11"
-          pointerEvents="none"
-          fill={visual === 'concluida' ? '#34d399' : visual === 'pendente' ? '#f59e0b' : '#6b7a8f'}
-        >
-          {glyph}
-        </text>
-      )}
-
-      {/* Depósito: marcado como apoio, nunca como objetivo */}
-      {visual === 'apoio' && (
-        <text
-          x={cx}
-          y={cy + 12}
-          textAnchor="middle"
-          fontFamily="IBM Plex Mono, monospace"
-          fontSize="8"
-          letterSpacing="0.08em"
-          pointerEvents="none"
-          fill="#c9a227"
         >
           RECARGA
         </text>

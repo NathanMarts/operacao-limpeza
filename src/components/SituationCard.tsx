@@ -1,101 +1,110 @@
 import { formatMinutes, type ActionSummary, type Availability } from '../domain/effects';
 import type { SituationAction } from '../domain/types';
 
+/** Três paletas, como no mockup: vermelha, verde-água e âmbar. */
+const PALETAS = [
+  {
+    borda: 'border-[#8b3b3f]',
+    fundo: 'bg-[#271d27]',
+    titulo: 'text-[#e88b8e]',
+    selo: 'bg-[#4a2427] text-[#f0a9ab] ring-[#8b3b3f]',
+    botao: 'bg-[#b25356] hover:bg-[#c25f62] text-white',
+    icone: '⚠️',
+  },
+  {
+    borda: 'border-[#2c7a63]',
+    fundo: 'bg-[#11292b]',
+    titulo: 'text-[#5fd3ae]',
+    selo: 'bg-[#123a33] text-[#7fe0c0] ring-[#2c7a63]',
+    botao: 'bg-[#32856c] hover:bg-[#3a9a7d] text-white',
+    icone: '📦',
+  },
+  {
+    borda: 'border-[#8a6a2e]',
+    fundo: 'bg-[#232423]',
+    titulo: 'text-[#e6bb62]',
+    selo: 'bg-[#3b3116] text-[#f0cd84] ring-[#8a6a2e]',
+    botao: 'bg-[#9d7b3f] hover:bg-[#b18c48] text-white',
+    icone: '🧭',
+  },
+] as const;
+
 type Props = {
   action: SituationAction;
   summary: ActionSummary;
   availability: Availability;
+  index: number;
   onChoose: (actionId: string) => void;
 };
 
-/**
- * Carta de decisão. A estrutura encarna o trade-off: AGORA em cima, DEPOIS
- * embaixo, separados por uma régua. Se a metade de baixo está vazia, a escolha
- * resolve tudo de imediato; se está cheia, você está comprando tempo a crédito.
- */
-export function SituationCard({ action, summary, availability, onChoose }: Props) {
+export function SituationCard({ action, summary, availability, index, onChoose }: Props) {
+  const paleta = PALETAS[index % PALETAS.length];
   const disabled = !availability.available;
 
   return (
     <div
-      className={`group relative flex flex-col overflow-hidden rounded-lg transition-all duration-200 ${
-        disabled
-          ? 'bg-surface/60 opacity-50'
-          : 'bg-surface-2 ring-1 ring-hairline hover:-translate-y-0.5 hover:ring-player/60'
+      className={`flex flex-col rounded-xl border ${paleta.borda} ${paleta.fundo} p-4 transition-opacity ${
+        disabled ? 'opacity-45' : ''
       }`}
     >
-      {/* Cabeçalho: nome da decisão e o preço imediato em destaque */}
-      <div className="px-5 pt-5 pb-4">
-        <h4 className="font-display text-[17px] font-bold leading-tight tracking-tight text-ink-hi">
-          {action.label}
-        </h4>
-        <p className="mt-2 text-[12.5px] leading-relaxed text-ink-mid">{action.description}</p>
-      </div>
+      <h4 className={`flex items-start gap-2.5 text-[14.5px] font-semibold leading-snug ${paleta.titulo}`}>
+        <span className="text-[17px] leading-none" aria-hidden>
+          {paleta.icone}
+        </span>
+        {action.label}
+      </h4>
 
-      {/* AGORA */}
-      <div className="px-5">
-        <div className="flex items-baseline justify-between">
-          <span className="eyebrow">Agora</span>
-          <span className="data text-[15px] font-semibold text-ink-hi">
-            {summary.minutosAgora > 0 ? `+${formatMinutes(summary.minutosAgora)} min` : 'sem custo'}
-          </span>
-        </div>
-        <ul className="mt-2.5 space-y-1.5">
-          {summary.agora.map((line) => (
-            <li key={line.label} className="flex items-center gap-2.5 text-[12px]">
-              <span className="w-3.5 shrink-0 text-center text-ink-low" aria-hidden>
+      <p className="mt-2.5 text-[13px] leading-relaxed text-txt-2">{action.description}</p>
+
+      {/* Selo do custo imediato, como o "+4 min" do mockup */}
+      <p
+        className={`mt-3 self-start rounded-md px-3 py-1 text-[13px] font-semibold ring-1 ${paleta.selo}`}
+      >
+        {summary.minutosAgora > 0 ? `+ ${formatMinutes(summary.minutosAgora)} min` : 'sem custo agora'}
+      </p>
+
+      {/* Consequências agrupadas: o que cobra agora e o que fica para depois */}
+      <ul className="mt-3 flex-1 space-y-1.5">
+        {summary.agora
+          .filter((line) => line.label !== 'Tempo')
+          .map((line) => (
+            <li key={line.label} className="flex items-center gap-2 text-[12.5px] text-txt-2">
+              <span className="w-4 shrink-0 text-center" aria-hidden>
                 {line.icon}
               </span>
-              <span className="text-ink-low">{line.label}</span>
-              <span className="data ml-auto text-ink-mid">{line.value}</span>
+              {line.value}
             </li>
           ))}
-        </ul>
-      </div>
-
-      <div className="mx-5 my-4 rule-brass opacity-50" />
-
-      {/* DEPOIS — é aqui que mora o custo escondido de cada estratégia */}
-      <div className="flex-1 px-5">
-        <span className="eyebrow">Depois</span>
-        {summary.depois.length === 0 ? (
-          <p className="mt-2.5 flex items-center gap-2 text-[12px] text-done">
-            <span aria-hidden>✓</span>
-            <span>Nada pendente. A sala fica fechada.</span>
-          </p>
-        ) : (
-          <ul className="mt-2.5 space-y-2">
-            {summary.depois.map((line) => (
-              <li key={line.label} className="flex gap-2.5 text-[12px]">
-                <span className="w-3.5 shrink-0 text-center text-pending" aria-hidden>
-                  {line.icon}
-                </span>
-                <span className="text-ink-mid">
-                  <span className="text-ink-low">{line.label}: </span>
-                  {line.value}
-                </span>
-              </li>
-            ))}
-          </ul>
+        {summary.depois.map((line) => (
+          <li key={line.label} className="flex gap-2 text-[12.5px] text-warn">
+            <span className="w-4 shrink-0 text-center" aria-hidden>
+              {line.icon}
+            </span>
+            <span>{line.value}</span>
+          </li>
+        ))}
+        {summary.depois.length === 0 && (
+          <li className="flex items-center gap-2 text-[12.5px] text-ok">
+            <span className="w-4 shrink-0 text-center" aria-hidden>
+              ✓
+            </span>
+            Conclui a sala, sem pendência
+          </li>
         )}
-      </div>
+      </ul>
 
       {disabled && !availability.available && (
-        <p className="mx-5 mt-4 rounded bg-surface-3 px-3 py-2 text-[11.5px] text-ink-mid">
-          {availability.reason}
-        </p>
+        <p className="mt-3 rounded-md bg-black/25 px-3 py-2 text-[12px] text-txt-2">{availability.reason}</p>
       )}
 
-      <div className="p-5 pt-4">
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => onChoose(action.id)}
-          className="w-full rounded-md bg-surface-3 py-2.5 font-display text-[12px] font-semibold uppercase tracking-[0.14em] text-ink-mid transition-colors duration-150 group-hover:bg-player group-hover:text-bg disabled:bg-surface disabled:text-ink-low disabled:group-hover:bg-surface disabled:group-hover:text-ink-low"
-        >
-          Escolher
-        </button>
-      </div>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onChoose(action.id)}
+        className={`mt-4 rounded-lg py-2.5 text-[14px] font-semibold transition-colors ${paleta.botao} disabled:cursor-not-allowed disabled:bg-btn disabled:text-txt-3`}
+      >
+        Escolher
+      </button>
     </div>
   );
 }
