@@ -72,7 +72,7 @@ export function Room({
       tabIndex={interactive ? 0 : undefined}
       aria-label={aria}
       aria-disabled={!interactive}
-      className={interactive ? 'cursor-pointer' : 'cursor-not-allowed'}
+      className={interactive ? 'mapa-alvo cursor-pointer' : 'cursor-not-allowed'}
       onClick={() => interactive && onSelect(room.id)}
       onKeyDown={(event) => {
         if (interactive && (event.key === 'Enter' || event.key === ' ')) {
@@ -92,7 +92,28 @@ export function Room({
         <rect x={x} y={y} width={width} height={height} fill="url(#hachura-bloqueada)" pointerEvents="none" />
       )}
 
-      <rect x={x} y={y} width={width} height={height} fill="none" stroke={stroke} strokeWidth={strokeWidth} />
+      {interactive && (
+        <rect
+          className="mapa-alvo-brilho"
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          fill="#4f7df3"
+          opacity={0}
+        />
+      )}
+
+      <rect
+        className="mapa-alvo-parede"
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+      />
 
       {/* Cabines dos banheiros, como no desenho original */}
       {room.kind === 'wc' &&

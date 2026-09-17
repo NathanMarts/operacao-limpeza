@@ -144,3 +144,33 @@ body {
 .scroll-slim:hover::-webkit-scrollbar-thumb {
   background-color: #2e4761;
 }
+
+/*
+  Ambientes clicáveis do mapa. A parede acende no azul de ação — o mesmo da
+  sala já escolhida — para o hover prometer exatamente o que o clique faz.
+  As regras vivem aqui, e não em atributos, porque atributo de apresentação
+  perde para CSS: o estado calculado em JS continua sendo o padrão.
+*/
+.mapa-alvo .mapa-alvo-parede,
+.mapa-alvo .mapa-alvo-brilho {
+  transition:
+    stroke 140ms ease,
+    stroke-width 140ms ease,
+    opacity 140ms ease;
+}
+
+.mapa-alvo:hover .mapa-alvo-parede,
+.mapa-alvo:focus-visible .mapa-alvo-parede {
+  stroke: #4f7df3;
+  stroke-width: 3;
+}
+
+.mapa-alvo:hover .mapa-alvo-brilho,
+.mapa-alvo:focus-visible .mapa-alvo-brilho {
+  opacity: 0.16;
+}
+
+/* O contorno de foco do navegador não acompanha a forma da sala. */
+.mapa-alvo:focus-visible {
+  outline: none;
+}
