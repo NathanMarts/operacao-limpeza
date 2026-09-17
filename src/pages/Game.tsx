@@ -53,7 +53,7 @@ export function Game() {
                   type="checkbox"
                   checked={showRoute}
                   onChange={(event) => setShowRoute(event.target.checked)}
-                  className="h-3.5 w-3.5 accent-[#4f7df3]"
+                  className="h-3.5 w-3.5 accent-[#2f5fd0]"
                 />
                 Trajeto
               </label>
@@ -80,7 +80,7 @@ export function Game() {
               <button
                 type="button"
                 onClick={actions.wait}
-                className="ml-auto rounded-lg bg-warn px-5 py-2 text-[14px] font-semibold text-[#2b1f02] transition-opacity hover:opacity-90"
+                className="ml-auto rounded-lg bg-warn px-5 py-2 text-[14px] font-semibold text-white transition-opacity hover:opacity-90"
               >
                 Aguardar no corredor
               </button>

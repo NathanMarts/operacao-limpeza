@@ -20,7 +20,7 @@ export function FinalResult({ state, summary, history, onRestart, onClearHistory
   const excedente = summary.distanceTraveled - summary.minimumSweepMeters;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 p-4 sm:p-8">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0f1b26]/45 backdrop-blur-[2px] p-4 sm:p-8">
       <div className="mx-auto my-4 w-full max-w-5xl rounded-2xl border border-line bg-modal p-6 sm:p-7">
         <header>
           <p className="text-[13px] text-txt-2">{completo ? 'Turno concluído' : 'Turno encerrado'}</p>
@@ -57,9 +57,9 @@ export function FinalResult({ state, summary, history, onRestart, onClearHistory
         <section className="mt-6">
           <h3 className="text-[15px] font-semibold text-txt">Como ficou cada ambiente</h3>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <Grupo cor="#34d399" icon={Icon.concluida} title="Concluídos" rooms={summary.concluidas.map((r) => r.name)} />
-            <Grupo cor="#f0b429" icon={Icon.pendente} title="Com pendência" rooms={summary.pendentes.map((r) => r.name)} />
-            <Grupo cor="#5b6472" icon={Icon.naoIniciada} title="Não iniciados" rooms={summary.naoIniciadas.map((r) => r.name)} />
+            <Grupo cor="#0f9d6e" icon={Icon.concluida} title="Concluídos" rooms={summary.concluidas.map((r) => r.name)} />
+            <Grupo cor="#d08a08" icon={Icon.pendente} title="Com pendência" rooms={summary.pendentes.map((r) => r.name)} />
+            <Grupo cor="#7b8b9b" icon={Icon.naoIniciada} title="Não iniciados" rooms={summary.naoIniciadas.map((r) => r.name)} />
           </div>
         </section>
 
@@ -144,7 +144,7 @@ export function FinalResult({ state, summary, history, onRestart, onClearHistory
             type="button"
             onClick={onRestart}
             autoFocus
-            className="rounded-xl bg-accent px-7 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-[#6189f5]"
+            className="rounded-xl bg-accent px-7 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-[#254fb4]"
           >
             Jogar novamente
           </button>
@@ -199,7 +199,7 @@ function Grupo({
           style={{ background: cor }}
           aria-hidden
         >
-          <Glyph className="h-3 w-3 text-[#0b1822]" />
+          <Glyph className="h-3 w-3 text-white" />
         </span>
         {title}
         <span className="text-txt-3">({rooms.length})</span>

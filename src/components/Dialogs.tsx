@@ -16,7 +16,7 @@ function RoomThumb({ room }: { room: RoomDef }) {
     tecnica: '#c9bdf3',
   };
   return (
-    <svg viewBox="0 0 90 96" className="h-[96px] w-[90px]" aria-hidden>
+    <svg viewBox="0 0 90 96" className="h-[136px] w-[130px]" aria-hidden>
       <rect x="18" y="4" width="54" height="86" fill="#ffffff" />
       <rect x="18" y="4" width="54" height="86" fill={TONE[room.tone]} />
       <rect x="18" y="4" width="54" height="86" fill="none" stroke="#1e1e1e" strokeWidth="2" />
@@ -65,12 +65,12 @@ export function RoomConfirmDialog({
   const minutos = isDeposito ? refillMinutes : cleaningMinutes;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f1b26]/45 backdrop-blur-[2px] p-4">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
-        className="w-full max-w-md rounded-2xl border border-line bg-modal p-6"
+        className="w-full max-w-sm rounded-2xl border border-line bg-modal p-6"
       >
         <div className="flex flex-col items-center rounded-xl bg-modal-card p-5">
           <RoomThumb room={room} />
@@ -122,7 +122,7 @@ export function RoomConfirmDialog({
             type="button"
             onClick={onConfirm}
             autoFocus
-            className="flex-1 rounded-lg bg-accent py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#6189f5]"
+            className="flex-1 rounded-lg bg-accent py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#254fb4]"
           >
             Confirmar e ir
           </button>
@@ -145,7 +145,7 @@ function Linha({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <Glyph className="h-5 w-5 shrink-0 text-txt-2" aria-hidden />
+      <Glyph className="h-7 w-7 shrink-0 text-txt-2" aria-hidden />
       <div>
         <p className="text-[12.5px] leading-none text-txt-2">{label}</p>
         <p className="mt-1 text-[19px] font-bold leading-none text-txt">{value}</p>
@@ -175,7 +175,7 @@ export function SituationDialog({
   onChoose,
 }: SituationProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-3 sm:items-center sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0f1b26]/45 backdrop-blur-[2px] p-3 sm:items-center sm:p-6">
       <div
         role="dialog"
         aria-modal="true"
