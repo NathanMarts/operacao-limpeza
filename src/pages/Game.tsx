@@ -14,8 +14,6 @@ import {
 } from '../components/Panels';
 import { gameConfig } from '../data/gameConfig';
 import { previewCleaningMinutes } from '../domain/game';
-import { roomsById } from '../data/rooms';
-import { distanceBetween } from '../domain/movement';
 import { useCleaningGame } from '../hooks/useCleaningGame';
 import { Icon } from '../components/icons';
 
@@ -23,6 +21,8 @@ export function Game() {
   const game = useCleaningGame();
   const [tab, setTab] = useState<'mapa' | 'instrucoes'>('mapa');
   const [showRoute, setShowRoute] = useState(true);
+  /* Mapa expandido: esconde a coluna de apoio e devolve a largura ao desenho. */
+  const [expandido, setExpandido] = useState(false);
   const { state, actions, preview, situationView, summary } = game;
 
   return (
@@ -35,28 +35,50 @@ export function Game() {
         onTab={setTab}
       />
 
-      <main className="mx-auto grid max-w-[1600px] gap-4 p-4 lg:grid-cols-[280px_minmax(0,1fr)_300px] lg:p-5">
-        {/* Coluna esquerda */}
-        <aside className="space-y-4">
-          <ObjectivePanel />
-          <Legend />
-          <TipPanel />
-          <QuoteBlock />
-        </aside>
+      <main
+        className={`mx-auto grid items-start gap-4 p-4 lg:p-5 ${
+          expandido ? 'lg:grid-cols-[minmax(0,1fr)_300px]' : 'lg:grid-cols-[280px_minmax(0,1fr)_300px]'
+        }`}
+      >
+        {/* Coluna esquerda: sai de cena quando o mapa é expandido */}
+        {!expandido && (
+          <aside className="space-y-4">
+            <ObjectivePanel />
+            <Legend />
+            <TipPanel />
+            <QuoteBlock />
+          </aside>
+        )}
 
         {/* Centro */}
         <section className="min-w-0">
           {tab === 'mapa' ? (
             <div className="relative overflow-hidden rounded-xl border border-line bg-map-bg p-4">
-              <label className="absolute right-4 top-4 z-10 flex cursor-pointer select-none items-center gap-2 rounded-lg border border-line bg-panel px-3 py-1.5 text-[12.5px] text-txt-2">
-                <input
-                  type="checkbox"
-                  checked={showRoute}
-                  onChange={(event) => setShowRoute(event.target.checked)}
-                  className="h-3.5 w-3.5 accent-[#4f7df3]"
-                />
-                Trajeto
-              </label>
+              <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+                <label className="flex cursor-pointer select-none items-center gap-2 rounded-lg border border-line bg-panel px-3 py-1.5 text-[12.5px] text-txt-2">
+                  <input
+                    type="checkbox"
+                    checked={showRoute}
+                    onChange={(event) => setShowRoute(event.target.checked)}
+                    className="h-3.5 w-3.5 accent-[#4f7df3]"
+                  />
+                  Trajeto
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setExpandido((atual) => !atual)}
+                  aria-pressed={expandido}
+                  title={expandido ? 'Voltar ao layout completo' : 'Expandir o mapa'}
+                  className="flex items-center gap-2 rounded-lg border border-line bg-panel px-3 py-1.5 text-[12.5px] text-txt-2 transition-colors hover:bg-btn hover:text-txt"
+                >
+                  {expandido ? (
+                    <Icon.recolher className="h-[15px] w-[15px]" aria-hidden />
+                  ) : (
+                    <Icon.expandir className="h-[15px] w-[15px]" aria-hidden />
+                  )}
+                  {expandido ? 'Recolher' : 'Expandir'}
+                </button>
+              </div>
               <BuildingMap
                 state={state}
                 totalMinutes={game.totalMinutes}
@@ -137,10 +159,7 @@ export function Game() {
         <SituationDialog
           situation={situationView.situation}
           room={situationView.room}
-          distance={distanceBetween(
-            state.currentPosition,
-            roomsById[situationView.room.id].corridorPosition,
-          )}
+          distance={state.route.at(-1)?.distance ?? 0}
           cleaningMinutes={previewCleaningMinutes(state, situationView.room.id)}
           cards={situationView.cards}
           onChoose={actions.choose}

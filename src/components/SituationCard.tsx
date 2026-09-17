@@ -49,8 +49,8 @@ export function SituationCard({ action, summary, availability, index, onChoose }
         disabled ? 'opacity-45' : ''
       }`}
     >
-      <h4 className={`flex items-start gap-2.5 text-[14.5px] font-semibold leading-snug ${paleta.titulo}`}>
-        <Glyph className="h-[18px] w-[18px] shrink-0" aria-hidden />
+      <h4 className={`flex items-center gap-2.5 text-[14.5px] font-semibold leading-snug ${paleta.titulo}`}>
+        <Glyph className="h-9.5 w-9.5 shrink-0" aria-hidden />
         {action.label}
       </h4>
 

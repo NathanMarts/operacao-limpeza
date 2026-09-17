@@ -8,11 +8,16 @@ const PX_PER_METER = 11;
 const STAIR_METERS = 13;
 const MARGIN_X = 24;
 const MARGIN_Y = 20;
-const CORRIDOR_HEIGHT = 46;
+const CORRIDOR_HEIGHT = 52;
 const ROOM_DEPTH = 120;
 const MAX_DEPTH = 1.3;
 
 const toX = (meters: number) => MARGIN_X + (meters + STAIR_METERS) * PX_PER_METER;
+
+/* Faixas dentro do corredor, de cima para baixo: cota do trecho e trilha. */
+const COTA_TEXT_Y = -1;
+const COTA_LINE_Y = 6;
+const TRAIL_Y = 17;
 
 const CORRIDOR_X1 = toX(-STAIR_METERS) + 8;
 const CORRIDOR_X2 = toX(buildingSpanMeters);
@@ -84,7 +89,7 @@ export function BuildingMap({
         legs.push({
           x1: toX(position),
           x2: toX(target),
-          y: CENTER_Y + 11 + ((index % 3) - 1) * 4,
+          y: CENTER_Y + TRAIL_Y + ((index % 3) - 1) * 3,
           order: index,
         });
       }
@@ -133,11 +138,18 @@ export function BuildingMap({
         const meio = (x1 + x2) / 2;
         return (
           <g key={segmento.inicio} pointerEvents="none">
-            <line x1={x1 + 3} x2={x2 - 7} y1={CENTER_Y - 7} y2={CENTER_Y - 7} stroke="#8d8d8d" strokeWidth={1} />
-            <path d={`M ${x2 - 7} ${CENTER_Y - 7} l -5 -3 l 0 6 z`} fill="#8d8d8d" />
+            <line
+              x1={x1 + 3}
+              x2={x2 - 7}
+              y1={CENTER_Y + COTA_LINE_Y}
+              y2={CENTER_Y + COTA_LINE_Y}
+              stroke="#8d8d8d"
+              strokeWidth={1}
+            />
+            <path d={`M ${x2 - 7} ${CENTER_Y + COTA_LINE_Y} l -5 -3 l 0 6 z`} fill="#8d8d8d" />
             <text
               x={meio}
-              y={CENTER_Y - 11}
+              y={CENTER_Y + COTA_TEXT_Y}
               textAnchor="middle"
               fontFamily="Inter, sans-serif"
               fontSize="9"
@@ -204,10 +216,10 @@ export function BuildingMap({
           ))}
           {trail.stops.map((stop) => (
             <g key={stop.x}>
-              <circle cx={stop.x} cy={CENTER_Y + 11} r={6.5} fill="#4f7df3" />
+              <circle cx={stop.x} cy={CENTER_Y + TRAIL_Y} r={6} fill="#4f7df3" />
               <text
                 x={stop.x}
-                y={CENTER_Y + 14}
+                y={CENTER_Y + TRAIL_Y + 3}
                 textAnchor="middle"
                 fontFamily="Inter, sans-serif"
                 fontSize="8"
@@ -237,7 +249,8 @@ export function BuildingMap({
 
       {/* ---- Pino de posição atual, como no mockup ---- */}
       <g
-        transform={`translate(${playerX} ${CENTER_Y - CORRIDOR_HEIGHT / 2 - 4})`}
+        /* O pino tem 30px de altura: a ponta em +15 o deixa centrado na faixa. */
+        transform={`translate(${playerX} ${CENTER_Y + 15})`}
         style={{ transition: 'transform 400ms cubic-bezier(.4,0,.2,1)' }}
       >
         <path

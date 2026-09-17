@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { ComponentType, ReactNode } from 'react';
 import { Icon } from './icons';
 import { formatMinutes } from '../domain/effects';
@@ -235,31 +236,38 @@ export function SequencePanel({ state }: { state: GameState }) {
   const total = objectives.length;
   const linhas = Array.from({ length: total }, (_, index) => state.route[index] ?? null);
   const atual = state.route.length;
+  const ativoRef = useRef<HTMLLIElement>(null);
+
+  /* Mantém a parada atual à vista sem esticar o painel: quem rola é a lista. */
+  useEffect(() => {
+    ativoRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [atual]);
 
   return (
     <Card title="Sua sequência" icon={Icon.sequencia}>
-      <ol className="space-y-1.5">
+      <ol className="max-h-[236px] space-y-1 overflow-y-auto pr-1">
         {linhas.map((step, index) => {
           const ativo = index === atual - 1;
           return (
             <li
               key={index}
-              className={`flex items-center gap-3 rounded-lg px-2.5 py-1.5 ${
+              ref={ativo ? ativoRef : undefined}
+              className={`flex items-center gap-2.5 rounded-md px-2 py-1 ${
                 ativo ? 'bg-row-active ring-1 ring-accent/50' : ''
               }`}
             >
               <span
-                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${
                   step ? 'bg-accent text-white' : 'bg-btn text-txt-3'
                 }`}
               >
                 {index + 1}
               </span>
-              <span className={`flex-1 truncate text-[14px] ${step ? 'text-txt' : 'text-txt-3'}`}>
+              <span className={`flex-1 truncate text-[13px] ${step ? 'text-txt' : 'text-txt-3'}`}>
                 {step ? step.roomName : '—'}
               </span>
               {step && (
-                <span className="shrink-0 text-[12.5px] tabular-nums text-txt-2">
+                <span className="shrink-0 text-[12px] tabular-nums text-txt-2">
                   {step.distance} m
                   {step.purpose === 'retorno' && <span className="text-warn"> ↩</span>}
                   {step.purpose === 'deposito' && <span className="text-ok"> ⟳</span>}
@@ -270,7 +278,7 @@ export function SequencePanel({ state }: { state: GameState }) {
         })}
       </ol>
       {state.route.length > total && (
-        <p className="mt-2 text-center text-[12px] text-txt-3">
+        <p className="mt-2 text-center text-[11.5px] text-txt-3">
           + {state.route.length - total} paradas extras (retornos e recargas)
         </p>
       )}
