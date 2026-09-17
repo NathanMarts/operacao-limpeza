@@ -41,8 +41,10 @@ describe('geometria da planta', () => {
   it('a organização espacial da planta é preservada', () => {
     const topo = rooms.filter((room) => room.side === 'top');
     const base = rooms.filter((room) => room.side === 'bottom');
-    expect(topo.filter((room) => room.cleanable)).toHaveLength(7); // 6 salas + 1 WC
+    // 6 salas + 1 WC por ala; a caixa de escada é única e entra na contagem do topo.
+    expect(topo.filter((room) => room.cleanable && room.kind !== 'escada')).toHaveLength(7);
     expect(base.filter((room) => room.cleanable)).toHaveLength(7);
+    expect(rooms.filter((room) => room.kind === 'escada')).toHaveLength(1);
 
     // Banheiros no extremo leste, depósito logo antes deles.
     const maisALeste = Math.max(...rooms.map((room) => room.corridorPosition));
@@ -58,7 +60,8 @@ describe('geometria da planta', () => {
 
   it('cada posição do corredor é compartilhada por exatamente duas salas opostas', () => {
     const porPosicao = new Map<number, string[]>();
-    for (const room of rooms) {
+    // A caixa de escada atravessa o corredor e não tem par do lado oposto.
+    for (const room of rooms.filter((candidate) => !candidate.straddlesCorridor)) {
       porPosicao.set(room.corridorPosition, [...(porPosicao.get(room.corridorPosition) ?? []), room.id]);
     }
     for (const [posicao, ids] of porPosicao) {

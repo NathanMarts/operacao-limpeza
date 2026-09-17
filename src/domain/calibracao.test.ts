@@ -98,13 +98,13 @@ function playRoute(order: string[], seed = gameConfig.seed): GameState {
 }
 
 const ROTA_EFICIENTE = [
-  'S1', 'S7', 'S2', 'S8', 'S3', 'S9', 'S4', 'S10', 'S5', 'S11',
+  'ESC', 'S1', 'S7', 'S2', 'S8', 'S3', 'S9', 'S4', 'S10', 'S5', 'S11',
   'DEP-A', 'WC-A', 'WC-B', 'S6', 'S12',
 ];
 
 const ROTA_RUIM = [
   'WC-A', 'S1', 'S6', 'S7', 'S5', 'S2', 'DEP-A', 'S12', 'S3', 'S11',
-  'S4', 'S8', 'WC-B', 'S9', 'S10',
+  'S4', 'S8', 'DEP-A', 'WC-B', 'S9', 'ESC', 'S10',
 ];
 
 describe('calibração', () => {

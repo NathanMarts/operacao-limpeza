@@ -19,6 +19,9 @@ const COTA_TEXT_Y = -1;
 const COTA_LINE_Y = 6;
 const TRAIL_Y = 17;
 
+/* A caixa de escada ocupa os metros negativos, antes da entrada. */
+const ESCADA_ALTURA = 132;
+
 const CORRIDOR_X1 = toX(-STAIR_METERS) + 8;
 const CORRIDOR_X2 = toX(buildingSpanMeters);
 
@@ -30,9 +33,16 @@ function geometryFor(room: (typeof rooms)[number]): RoomGeometry {
   const x = toX(room.spanStartMeters);
   const width = room.spanWidthMeters * PX_PER_METER;
   const height = ROOM_DEPTH * room.depth;
+  const doorX = toX(room.corridorPosition);
+
+  /* A caixa de escada não fica de um lado do corredor: ela o atravessa. */
+  if (room.straddlesCorridor) {
+    return { x, y: CENTER_Y - height / 2, width, height, doorX };
+  }
+
   const y =
     room.side === 'top' ? CENTER_Y - CORRIDOR_HEIGHT / 2 - height : CENTER_Y + CORRIDOR_HEIGHT / 2;
-  return { x, y, width, height, doorX: toX(room.corridorPosition) };
+  return { x, y, width, height, doorX };
 }
 
 function visualStateOf(state: GameState, roomId: string, totalNow: number): RoomVisualState {
@@ -183,28 +193,6 @@ export function BuildingMap({
         />
       ))}
 
-      {/* ---- Escada, à esquerda como na planta ---- */}
-      <g>
-        <rect
-          x={toX(-STAIR_METERS) + 6}
-          y={CENTER_Y - 56}
-          width={STAIR_METERS * PX_PER_METER - 26}
-          height={112}
-          fill="#f6e9ad"
-          stroke="#1e1e1e"
-          strokeWidth={1.75}
-        />
-        <rect
-          x={toX(-STAIR_METERS) + 18}
-          y={CENTER_Y - 44}
-          width={STAIR_METERS * PX_PER_METER - 50}
-          height={88}
-          fill="url(#degraus)"
-          stroke="#1e1e1e"
-          strokeWidth={1}
-        />
-      </g>
-
       {/* ---- Ambientes ---- */}
       {rooms.map((room) => (
         <Room
@@ -257,7 +245,7 @@ export function BuildingMap({
       {/* ---- Entrada: legenda sob a escada, fora do corredor ---- */}
       <text
         x={toX(-STAIR_METERS) + (STAIR_METERS * PX_PER_METER - 14) / 2}
-        y={CENTER_Y + 74}
+        y={CENTER_Y + ESCADA_ALTURA / 2 + 18}
         textAnchor="middle"
         fontFamily="Inter, sans-serif"
         fontSize="11"

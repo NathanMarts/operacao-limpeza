@@ -26,14 +26,14 @@ function forceSituation(state: GameState, roomId: string, situationId: string): 
 }
 
 describe('material e depósito', () => {
-  it('limpar tudo exige 16 cargas, mas o carrinho só leva 10 — a ida ao depósito é obrigatória', () => {
+  it('limpar tudo exige 17 cargas, mas o carrinho só leva 10 — a ida ao depósito é obrigatória', () => {
     const necessario = objectives.reduce((total, room) => total + room.materialCost, 0);
-    expect(necessario).toBe(16);
+    expect(necessario).toBe(17); // 12 salas + 2 banheiros (2 cada) + caixa de escada
     expect(gameConfig.initialCharges).toBe(10);
     expect(gameConfig.maxCharges).toBe(10);
     expect(necessario).toBeGreaterThan(gameConfig.maxCharges);
-    // Margem de folga acordada na decisão L4.
-    expect(gameConfig.maxCharges * 2 - necessario).toBe(4);
+    // Margem de folga: sobra pouco, mas uma única recarga ainda basta.
+    expect(gameConfig.maxCharges * 2 - necessario).toBe(3);
   });
 
   it('salas custam 1 carga e banheiros custam 2', () => {

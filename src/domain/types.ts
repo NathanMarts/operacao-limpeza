@@ -2,10 +2,10 @@ export type RoomId = string;
 export type Side = 'top' | 'bottom';
 
 /** Papel do ambiente. Só `sala` e `wc` são objetivos de limpeza (decisão Q2). */
-export type RoomKind = 'sala' | 'wc' | 'deposito';
+export type RoomKind = 'sala' | 'wc' | 'deposito' | 'escada';
 
 /** Tom visual da sala. Puramente estético, mas declarado nos dados e não no SVG. */
-export type RoomTone = 'grande' | 'media' | 'pequena' | 'estreita' | 'banheiro' | 'tecnica';
+export type RoomTone = 'grande' | 'media' | 'pequena' | 'estreita' | 'banheiro' | 'tecnica' | 'escada';
 
 export type RoomDef = {
   id: RoomId;
@@ -29,6 +29,8 @@ export type RoomDef = {
   spanWidthMeters: number;
   /** Profundidade relativa; > 1 reproduz a saliência da ala esquerda da planta. */
   depth: number;
+  /** A caixa de escada atravessa o corredor, em vez de ficar de um lado só. */
+  straddlesCorridor?: boolean;
 };
 
 export type RoomStatus = 'nao-iniciada' | 'pendente' | 'concluida';

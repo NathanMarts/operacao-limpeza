@@ -12,6 +12,13 @@ export const ENTRANCE_POSITION = 0;
 export const DEPOSITO_POSITION = 58;
 
 export const rooms: RoomDef[] = [
+  // ----- Acesso -------------------------------------------------------
+  {
+    id: 'ESC', name: 'Caixa de escada', shortName: 'ESC', kind: 'escada', side: 'top', tone: 'escada',
+    corridorPosition: 0, baseCleaningMinutes: 7, materialCost: 1, cleanable: true,
+    spanStartMeters: -13, spanWidthMeters: 13, depth: 1.1, straddlesCorridor: true,
+  },
+
   // ----- Ala superior -------------------------------------------------
   {
     id: 'S1', name: 'Sala 1', shortName: 'S1', kind: 'sala', side: 'top', tone: 'tecnica',

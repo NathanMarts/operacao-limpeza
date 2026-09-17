@@ -14,6 +14,7 @@ function RoomThumb({ room }: { room: RoomDef }) {
     estreita: '#4fb6a8',
     banheiro: '#c4b9f5',
     tecnica: '#c9bdf3',
+    escada: '#f6e9ad',
   };
   return (
     <svg viewBox="0 0 90 96" className="h-[136px] w-[1300px]" aria-hidden>

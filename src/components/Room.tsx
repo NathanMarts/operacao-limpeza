@@ -8,6 +8,7 @@ const TONE: Record<RoomTone, string> = {
   estreita: '#4fb6a8',
   banheiro: '#c4b9f5',
   tecnica: '#c9bdf3',
+  escada: '#f6e9ad',
 };
 
 const PAREDE = '#1e1e1e';
@@ -115,6 +116,74 @@ export function Room({
         strokeWidth={strokeWidth}
       />
 
+      {/* Caixa de escada: lance e contralance em volta de um núcleo central */}
+      {room.kind === 'escada' && (
+        <g pointerEvents="none">
+          {(() => {
+            const larguraNucleo = 30;
+            const alturaNucleo = 34;
+            const nx = x + larguraNucleo;
+            const ny = y + alturaNucleo;
+            const nLargura = width - larguraNucleo * 2;
+            const nAltura = height - alturaNucleo * 2;
+            const traco = { stroke: PAREDE, strokeWidth: 0.9, opacity: 0.5 } as const;
+            return (
+              <>
+                {/* Lance lateral, oposto ao corredor */}
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <line
+                    key={`l${i}`}
+                    x1={x}
+                    x2={nx}
+                    y1={ny + (nAltura / 6) * (i + 1)}
+                    y2={ny + (nAltura / 6) * (i + 1)}
+                    {...traco}
+                  />
+                ))}
+                {/* Lances de topo e base */}
+                {[y, ny + nAltura].map((inicioY, lado) =>
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <line
+                      key={`t${lado}-${i}`}
+                      x1={nx + (nLargura / 5) * (i + 1)}
+                      x2={nx + (nLargura / 5) * (i + 1)}
+                      y1={inicioY}
+                      y2={inicioY + alturaNucleo}
+                      {...traco}
+                    />
+                  )),
+                )}
+                {/* Núcleo central */}
+                <rect
+                  x={nx}
+                  y={ny}
+                  width={nLargura}
+                  height={nAltura}
+                  rx={4}
+                  fill="#ffffff"
+                  fillOpacity={0.45}
+                  stroke={PAREDE}
+                  strokeWidth={1.5}
+                />
+                {/* Sentido de subida, contornando o núcleo até o patamar */}
+                <path
+                  d={`M ${x + larguraNucleo / 2} ${y + height - 12} L ${x + larguraNucleo / 2} ${y + 12} L ${nx + nLargura + 8} ${y + 12}`}
+                  fill="none"
+                  stroke={PAREDE}
+                  strokeWidth={1.1}
+                  opacity={0.6}
+                />
+                <path
+                  d={`M ${nx + nLargura + 15} ${y + 12} l -7 -4 l 0 8 z`}
+                  fill={PAREDE}
+                  opacity={0.6}
+                />
+              </>
+            );
+          })()}
+        </g>
+      )}
+
       {/* Cabines dos banheiros, como no desenho original */}
       {room.kind === 'wc' &&
         Array.from({ length: 3 }).map((_, index) => (
@@ -132,6 +201,8 @@ export function Room({
         ))}
 
       {/* Vão e folha da porta, exatamente na posição usada no cálculo */}
+      {room.kind !== 'escada' && (
+      <>
       <rect
         x={doorX - 9}
         y={room.side === 'top' ? y + height - strokeWidth / 2 - 1 : y - strokeWidth / 2 - 1}
@@ -152,6 +223,8 @@ export function Room({
         opacity={0.65}
         pointerEvents="none"
       />
+      </>
+      )}
 
       {/* Rótulo em duas linhas: nome e minutos, como no mockup */}
       <text
