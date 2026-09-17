@@ -43,13 +43,13 @@ describe('material e depósito', () => {
   });
 
   it('passar pelo depósito durante outro deslocamento NÃO reabastece', () => {
-    // S6(52) → WC-A(62) passa por cima do depósito, em 58.
+    // S6(18) → WC-A(8) passa por cima do depósito, em 12.
     let state = createInitialState();
     state = chooseAction(forceSituation(state, 'S6', 'sala-suja'), 'completa');
     const antes = state.charges;
 
     state = arriveAt(state, 'WC-A');
-    expect(state.currentPosition).toBe(62);
+    expect(state.currentPosition).toBe(8);
     expect(state.charges).toBe(antes); // nenhuma recarga silenciosa
   });
 
@@ -66,12 +66,12 @@ describe('material e depósito', () => {
     state = arriveAt(state, 'DEP-A');
     expect(state.charges).toBe(gameConfig.maxCharges);
     expect(state.eventMinutes - eventosAntes).toBe(gameConfig.refillMinutes);
-    expect(state.distanceTraveled - distanciaAntes).toBe(53); // 5 → 58
+    expect(state.distanceTraveled - distanciaAntes).toBe(53); // 65 → 12
     expect(state.phase).toBe('mapa'); // depósito não abre situação
   });
 
   it('parar no depósito no meio de uma varredura monotônica custa 0 m extras', () => {
-    // S6(52) → DEP(58) → WC-A(62) percorre os mesmos 10 m de S6 → WC-A.
+    // S6(18) → DEP(12) → WC-A(8) percorre os mesmos 10 m de S6 → WC-A.
     let comParada = createInitialState();
     comParada = chooseAction(forceSituation(comParada, 'S6', 'sala-suja'), 'completa');
     const base = comParada.distanceTraveled;

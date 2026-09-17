@@ -102,8 +102,8 @@ describe('renderização dos componentes', () => {
     }
     // A planta desenhada, não uma imagem clicável.
     expect(html).not.toContain('<image');
-    // Marco zero e cotas de cada trecho do corredor.
-    expect(html).toContain('ENTRADA (0 m)');
+    // Marco zero (o quadrado do início, a leste) e cotas de cada trecho.
+    expect(html).toContain('INÍCIO');
     expect(html).toContain('10m');
     expect(html).toContain('7m');
   });

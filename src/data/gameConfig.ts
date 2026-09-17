@@ -29,7 +29,7 @@ export const gameConfig = {
    * Referência espacial mínima — não é "rota ótima", pois depósito, pendências
    * e decisões podem alterar o custo total (decisão Q12).
    */
-  minimumSweepMeters: 62,
+  minimumSweepMeters: 70,
 
   /** Chave do histórico local de partidas (decisão Q12/L7). */
   historyStorageKey: 'operacao-limpeza:historico:v1',

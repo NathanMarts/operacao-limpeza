@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { buildingSpanMeters, rooms, roomsById } from '../data/rooms';
+import { ENTRADA_DESENHO_M, buildingSpanMeters, desenhoDaPorta, rooms, roomsById } from '../data/rooms';
 import type { GameState } from '../domain/types';
 import { Room, type RoomGeometry, type RoomVisualState } from './Room';
 
@@ -14,18 +14,18 @@ const MAX_DEPTH = 1.3;
 
 const toX = (meters: number) => MARGIN_X + (meters + STAIR_METERS) * PX_PER_METER;
 
+/** Onde uma distância-até-a-entrada cai no desenho. Cresce para a esquerda. */
+const xDaPosicao = (posicao: number) => toX(ENTRADA_DESENHO_M - posicao);
+
 /* Faixas dentro do corredor, de cima para baixo: cota do trecho e trilha. */
 const COTA_TEXT_Y = -1;
 const COTA_LINE_Y = 6;
 const TRAIL_Y = 17;
 
-/* A caixa de escada ocupa os metros negativos, antes da entrada. */
-const ESCADA_ALTURA = 132;
-
 const CORRIDOR_X1 = toX(-STAIR_METERS) + 8;
-const CORRIDOR_X2 = toX(buildingSpanMeters);
+const CORRIDOR_X2 = toX(ENTRADA_DESENHO_M);
 
-const WIDTH = CORRIDOR_X2 + MARGIN_X;
+const WIDTH = toX(buildingSpanMeters) + MARGIN_X;
 const CENTER_Y = MARGIN_Y + ROOM_DEPTH * MAX_DEPTH + CORRIDOR_HEIGHT / 2;
 const HEIGHT = CENTER_Y + CORRIDOR_HEIGHT / 2 + ROOM_DEPTH * MAX_DEPTH + MARGIN_Y;
 
@@ -33,7 +33,7 @@ function geometryFor(room: (typeof rooms)[number]): RoomGeometry {
   const x = toX(room.spanStartMeters);
   const width = room.spanWidthMeters * PX_PER_METER;
   const height = ROOM_DEPTH * room.depth;
-  const doorX = toX(room.corridorPosition);
+  const doorX = toX(desenhoDaPorta(room));
 
   /* A caixa de escada não fica de um lado do corredor: ela o atravessa. */
   if (room.straddlesCorridor) {
@@ -48,7 +48,7 @@ function geometryFor(room: (typeof rooms)[number]): RoomGeometry {
 function visualStateOf(state: GameState, roomId: string, totalNow: number): RoomVisualState {
   const room = roomsById[roomId];
   if (state.pendingTargetId === roomId || state.situation?.roomId === roomId) return 'destino';
-  if (room.kind === 'deposito') return 'apoio';
+  if (room.kind === 'deposito' || room.kind === 'entrada') return 'apoio';
 
   const roomState = state.rooms[roomId];
   if (roomState.status === 'concluida') return 'concluida';
@@ -101,19 +101,19 @@ export function BuildingMap({
       const target = room.corridorPosition;
       if (target !== position) {
         legs.push({
-          x1: toX(position),
-          x2: toX(target),
+          x1: xDaPosicao(position),
+          x2: xDaPosicao(target),
           y: CENTER_Y + TRAIL_Y + ((index % 3) - 1) * 3,
           order: index,
         });
       }
-      stops.set(toX(target), index + 1);
+      stops.set(xDaPosicao(target), index + 1);
       position = target;
     });
     return { legs, stops: [...stops].map(([x, order]) => ({ x, order })), total: state.route.length };
   }, [state.route]);
 
-  const playerX = toX(state.currentPosition);
+  const playerX = xDaPosicao(state.currentPosition);
 
   return (
     <svg
@@ -147,21 +147,23 @@ export function BuildingMap({
 
       {/* Cotas de cada trecho, com seta, como no mockup */}
       {SEGMENTOS.map((segmento) => {
-        const x1 = toX(segmento.inicio);
-        const x2 = toX(segmento.fim);
-        const meio = (x1 + x2) / 2;
+        const xInicio = xDaPosicao(segmento.inicio);
+        const xFim = xDaPosicao(segmento.fim);
+        /* A entrada fica a leste: afastar-se dela corre para a esquerda. */
+        const sentido = Math.sign(xFim - xInicio);
+        const meio = (xInicio + xFim) / 2;
         return (
           <g key={segmento.inicio} pointerEvents="none">
             <line
-              x1={x1 + MARCO_RAIO + 3}
-              x2={x2 - MARCO_RAIO - 6}
+              x1={xInicio + sentido * (MARCO_RAIO + 3)}
+              x2={xFim - sentido * (MARCO_RAIO + 6)}
               y1={CENTER_Y + COTA_LINE_Y}
               y2={CENTER_Y + COTA_LINE_Y}
               stroke="#8d8d8d"
               strokeWidth={1}
             />
             <path
-              d={`M ${x2 - MARCO_RAIO - 1} ${CENTER_Y + COTA_LINE_Y} l -5 -3 l 0 6 z`}
+              d={`M ${xFim - sentido * (MARCO_RAIO + 1)} ${CENTER_Y + COTA_LINE_Y} l ${-sentido * 5} -3 l 0 6 z`}
               fill="#8d8d8d"
             />
             <text
@@ -183,7 +185,7 @@ export function BuildingMap({
       {MARCOS.map((metros) => (
         <circle
           key={metros}
-          cx={toX(metros)}
+          cx={xDaPosicao(metros)}
           cy={CENTER_Y + COTA_LINE_Y}
           r={MARCO_RAIO}
           fill="#6f6f6f"
@@ -241,20 +243,6 @@ export function BuildingMap({
           ))}
         </g>
       )}
-
-      {/* ---- Entrada: legenda sob a escada, fora do corredor ---- */}
-      <text
-        x={toX(-STAIR_METERS) + (STAIR_METERS * PX_PER_METER - 14) / 2}
-        y={CENTER_Y + ESCADA_ALTURA / 2 + 18}
-        textAnchor="middle"
-        fontFamily="Inter, sans-serif"
-        fontSize="11"
-        fontWeight="700"
-        fill="#93a7b8"
-        pointerEvents="none"
-      >
-        ENTRADA (0 m)
-      </text>
 
       {/* ---- Pino de posição atual, como no mockup ---- */}
       <g

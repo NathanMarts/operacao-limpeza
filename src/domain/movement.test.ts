@@ -67,23 +67,24 @@ describe('regra espacial do corredor', () => {
 
 describe('ida e volta pelo corredor', () => {
   it('acumula o custo da volta: ir longe e retornar cobra os dois trechos', () => {
-    // Entrada(0) → WC-A(62) → S1(5). Ida 62 m, volta 57 m.
+    // Entrada(0) → WC-A(8) → S1(65). Ida 8 m, volta 57 m.
     const state = walk(['WC-A', 'S1']);
-    expect(state.distanceTraveled).toBe(62 + 57);
-    expect(state.currentPosition).toBe(5);
+    expect(state.distanceTraveled).toBe(8 + 57);
+    expect(state.currentPosition).toBe(65);
   });
 
   it('a varredura monotônica gasta exatamente a extensão do corredor', () => {
-    const sweep = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'WC-A'];
+    // A partir da entrada, a leste: banheiro primeiro, escada por último.
+    const sweep = ['WC-A', 'S6', 'S5', 'S4', 'S3', 'S2', 'S1', 'ESC'];
     const state = walk(sweep);
-    expect(state.distanceTraveled).toBe(62);
+    expect(state.distanceTraveled).toBe(70);
     expect(state.distanceTraveled).toBe(gameConfig.minimumSweepMeters);
   });
 
   it('duas ordens diferentes produzem deslocamentos diferentes', () => {
-    const emOrdem = walk(['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'WC-A']);
-    const zigZag = walk(['WC-A', 'S1', 'S6', 'S2', 'S5', 'S3', 'S4']);
-    expect(emOrdem.distanceTraveled).toBe(62);
+    const emOrdem = walk(['WC-A', 'S6', 'S5', 'S4', 'S3', 'S2', 'S1', 'ESC']);
+    const zigZag = walk(['S1', 'WC-A', 'S2', 'S6', 'S3', 'S5', 'S4', 'ESC']);
+    expect(emOrdem.distanceTraveled).toBe(70);
     expect(zigZag.distanceTraveled).toBeGreaterThan(emOrdem.distanceTraveled);
     // A rota ruim custa mais que o dobro da boa — o planejamento tem peso real.
     expect(zigZag.distanceTraveled).toBeGreaterThan(emOrdem.distanceTraveled * 2);
@@ -92,13 +93,13 @@ describe('ida e volta pelo corredor', () => {
   it('salas opostas compartilham posição: atravessar o corredor não custa nada', () => {
     const state = walk(['S5', 'S11']);
     expect(roomsById['S5'].corridorPosition).toBe(roomsById['S11'].corridorPosition);
-    expect(state.distanceTraveled).toBe(42);
+    expect(state.distanceTraveled).toBe(28);
   });
 
   it('o tempo de deslocamento entra no total separado do tempo de limpeza', () => {
     const state = walk(['WC-A', 'S1']);
     const summary = summarize(state);
-    expect(summary.travelMinutes).toBeCloseTo((62 + 57) / 5);
+    expect(summary.travelMinutes).toBeCloseTo((8 + 57) / 5);
     expect(summary.totalMinutes).toBeCloseTo(
       summary.cleaningMinutes + summary.travelMinutes + summary.eventMinutes + summary.idleMinutes,
     );
@@ -112,7 +113,7 @@ describe('ponto de não-retorno', () => {
     expect(selected.distanceTraveled).toBe(0);
 
     const confirmed = confirmTravel(selected);
-    expect(confirmed.distanceTraveled).toBe(52);
+    expect(confirmed.distanceTraveled).toBe(18);
     expect(confirmed.phase).toBe('situacao');
   });
 

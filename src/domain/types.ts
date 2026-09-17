@@ -2,10 +2,18 @@ export type RoomId = string;
 export type Side = 'top' | 'bottom';
 
 /** Papel do ambiente. Só `sala` e `wc` são objetivos de limpeza (decisão Q2). */
-export type RoomKind = 'sala' | 'wc' | 'deposito' | 'escada';
+export type RoomKind = 'sala' | 'wc' | 'deposito' | 'escada' | 'entrada';
 
 /** Tom visual da sala. Puramente estético, mas declarado nos dados e não no SVG. */
-export type RoomTone = 'grande' | 'media' | 'pequena' | 'estreita' | 'banheiro' | 'tecnica' | 'escada';
+export type RoomTone =
+  | 'grande'
+  | 'media'
+  | 'pequena'
+  | 'estreita'
+  | 'banheiro'
+  | 'tecnica'
+  | 'escada'
+  | 'entrada';
 
 export type RoomDef = {
   id: RoomId;

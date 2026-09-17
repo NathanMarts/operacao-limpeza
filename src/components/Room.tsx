@@ -9,6 +9,7 @@ const TONE: Record<RoomTone, string> = {
   banheiro: '#c4b9f5',
   tecnica: '#c9bdf3',
   escada: '#f6e9ad',
+  entrada: '#cfd8e3',
 };
 
 const PAREDE = '#1e1e1e';
@@ -116,6 +117,48 @@ export function Room({
         strokeWidth={strokeWidth}
       />
 
+      {/* Entrada do bloco: o quadrado onde o turno começa. Sem pino próprio —
+          quem marca a posição é o do jogador, que nasce exatamente aqui.
+          Texto e seta ficam fora da faixa do corredor, para o pino não cobri-los. */}
+      {room.kind === 'entrada' && (
+        <g pointerEvents="none">
+          <rect
+            x={x + 8}
+            y={y + 8}
+            width={width - 16}
+            height={height - 16}
+            rx={3}
+            fill="none"
+            stroke="#4f7df3"
+            strokeWidth={1.25}
+            strokeDasharray="5 4"
+            opacity={0.6}
+          />
+          <text
+            x={cx}
+            y={cy - 34}
+            textAnchor="middle"
+            fontFamily="Inter, sans-serif"
+            fontSize="12"
+            fontWeight="700"
+            fill="#25405f"
+          >
+            INÍCIO
+          </text>
+          {/* Sentido do percurso: o bloco se estende para oeste */}
+          <line
+            x1={x + 20}
+            x2={x + width - 20}
+            y1={cy + 36}
+            y2={cy + 36}
+            stroke="#4f7df3"
+            strokeWidth={1.25}
+            opacity={0.55}
+          />
+          <path d={`M ${x + 14} ${cy + 36} l 8 -4 l 0 8 z`} fill="#4f7df3" opacity={0.7} />
+        </g>
+      )}
+
       {/* Caixa de escada: lance e contralance em volta de um núcleo central */}
       {room.kind === 'escada' && (
         <g pointerEvents="none">
@@ -201,7 +244,7 @@ export function Room({
         ))}
 
       {/* Vão e folha da porta, exatamente na posição usada no cálculo */}
-      {room.kind !== 'escada' && (
+      {room.kind !== 'escada' && room.kind !== 'entrada' && (
       <>
       <rect
         x={doorX - 9}
@@ -227,6 +270,7 @@ export function Room({
       )}
 
       {/* Rótulo em duas linhas: nome e minutos, como no mockup */}
+      {room.kind !== 'entrada' && (
       <text
         x={cx}
         y={tall ? cy - 1 : cy + 3}
@@ -239,6 +283,7 @@ export function Room({
       >
         {room.shortName}
       </text>
+      )}
 
       {tall && room.cleanable && (
         <text

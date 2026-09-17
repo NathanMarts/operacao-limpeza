@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildingSpanMeters, objectives, rooms } from './rooms';
+import { buildingSpanMeters, desenhoDaPorta, objectives, rooms } from './rooms';
 import { gameConfig } from './gameConfig';
 
 describe('geometria da planta', () => {
@@ -7,8 +7,10 @@ describe('geometria da planta', () => {
     for (const room of rooms) {
       const inicio = room.spanStartMeters;
       const fim = room.spanStartMeters + room.spanWidthMeters;
-      expect(room.corridorPosition, `${room.id} tem a porta fora da sala`).toBeGreaterThanOrEqual(inicio);
-      expect(room.corridorPosition, `${room.id} tem a porta fora da sala`).toBeLessThanOrEqual(fim);
+      // A porta é comparada na régua do DESENHO, não na distância até a entrada.
+      const porta = desenhoDaPorta(room);
+      expect(porta, `${room.id} tem a porta fora da sala`).toBeGreaterThanOrEqual(inicio);
+      expect(porta, `${room.id} tem a porta fora da sala`).toBeLessThanOrEqual(fim);
     }
   });
 
@@ -46,15 +48,16 @@ describe('geometria da planta', () => {
     expect(base.filter((room) => room.cleanable)).toHaveLength(7);
     expect(rooms.filter((room) => room.kind === 'escada')).toHaveLength(1);
 
-    // Banheiros no extremo leste, depósito logo antes deles.
-    const maisALeste = Math.max(...rooms.map((room) => room.corridorPosition));
-    expect(rooms.filter((room) => room.corridorPosition === maisALeste).every((room) => room.kind === 'wc')).toBe(true);
+    // O turno começa a leste: os banheiros são o objetivo mais perto da entrada,
+    // e o depósito vem logo depois deles.
+    const maisPerto = Math.min(...objectives.map((room) => room.corridorPosition));
+    expect(objectives.filter((room) => room.corridorPosition === maisPerto).every((room) => room.kind === 'wc')).toBe(true);
 
     const deposito = rooms.find((room) => room.kind === 'deposito')!;
     const banheiro = rooms.find((room) => room.kind === 'wc')!;
-    expect(deposito.corridorPosition).toBeLessThan(banheiro.corridorPosition);
-    expect(deposito.corridorPosition).toBeGreaterThan(
-      Math.max(...rooms.filter((room) => room.kind === 'sala').map((room) => room.corridorPosition)),
+    expect(deposito.corridorPosition).toBeGreaterThan(banheiro.corridorPosition);
+    expect(deposito.corridorPosition).toBeLessThan(
+      Math.min(...rooms.filter((room) => room.kind === 'sala').map((room) => room.corridorPosition)),
     );
   });
 

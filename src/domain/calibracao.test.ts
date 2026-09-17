@@ -3,6 +3,7 @@ import { gameConfig } from '../data/gameConfig';
 import { objectives, roomsById } from '../data/rooms';
 import { situationsById } from '../data/situations';
 import { actionAvailability, evalTime, type EffectContext } from './effects';
+import { objectives as todosObjetivos } from '../data/rooms';
 import {
   chooseAction,
   confirmTravel,
@@ -54,11 +55,21 @@ function cheapestFinishing(state: GameState): string | null {
 /** Executa uma rota; se a sala não puder ser concluída, tenta de novo mais tarde. */
 function playRoute(order: string[], seed = gameConfig.seed): GameState {
   let state = createInitialState(seed);
-  const queue = [...order];
+  const queue: string[] = [...order];
   let guard = 0;
 
-  while (queue.length > 0 && guard < 200) {
+  while (guard < 400) {
     guard += 1;
+
+    /* Acabou a rota planejada mas sobrou serviço: um jogador não vai embora,
+       ele volta para o que ficou. Sem isso a medição subestima a partida. */
+    if (queue.length === 0) {
+      const pendentes = todosObjetivos
+        .filter((room) => state.rooms[room.id].status !== 'concluida')
+        .map((room) => room.id);
+      if (pendentes.length === 0) break;
+      queue.push(...pendentes);
+    }
 
     // Um jogador competente não insiste numa sala bloqueada: pega a próxima
     // da sua rota que esteja disponível, preferindo a mais perto.
@@ -98,13 +109,14 @@ function playRoute(order: string[], seed = gameConfig.seed): GameState {
 }
 
 const ROTA_EFICIENTE = [
-  'ESC', 'S1', 'S7', 'S2', 'S8', 'S3', 'S9', 'S4', 'S10', 'S5', 'S11',
-  'DEP-A', 'WC-A', 'WC-B', 'S6', 'S12',
+  'WC-A', 'WC-B', 'S6', 'S12', 'S5', 'S11', 'S4', 'S10',
+  'DEP-A',
+  'S3', 'S9', 'S2', 'S8', 'S1', 'S7', 'ESC',
 ];
 
 const ROTA_RUIM = [
-  'WC-A', 'S1', 'S6', 'S7', 'S5', 'S2', 'DEP-A', 'S12', 'S3', 'S11',
-  'S4', 'S8', 'DEP-A', 'WC-B', 'S9', 'ESC', 'S10',
+  'S1', 'WC-A', 'S6', 'S7', 'ESC', 'S2', 'DEP-A', 'S12', 'S3', 'S11',
+  'S4', 'S8', 'DEP-A', 'WC-B', 'S9', 'S10',
 ];
 
 describe('calibração', () => {
