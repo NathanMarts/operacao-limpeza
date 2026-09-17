@@ -60,6 +60,10 @@ const SEGMENTOS = (() => {
   }));
 })();
 
+/** Cada posição medida do corredor vira uma marca — o trecho fica entre duas. */
+const MARCOS = [SEGMENTOS[0].inicio, ...SEGMENTOS.map((segmento) => segmento.fim)];
+const MARCO_RAIO = 3.5;
+
 type Props = {
   state: GameState;
   totalMinutes: number;
@@ -139,14 +143,17 @@ export function BuildingMap({
         return (
           <g key={segmento.inicio} pointerEvents="none">
             <line
-              x1={x1 + 3}
-              x2={x2 - 7}
+              x1={x1 + MARCO_RAIO + 3}
+              x2={x2 - MARCO_RAIO - 6}
               y1={CENTER_Y + COTA_LINE_Y}
               y2={CENTER_Y + COTA_LINE_Y}
               stroke="#8d8d8d"
               strokeWidth={1}
             />
-            <path d={`M ${x2 - 7} ${CENTER_Y + COTA_LINE_Y} l -5 -3 l 0 6 z`} fill="#8d8d8d" />
+            <path
+              d={`M ${x2 - MARCO_RAIO - 1} ${CENTER_Y + COTA_LINE_Y} l -5 -3 l 0 6 z`}
+              fill="#8d8d8d"
+            />
             <text
               x={meio}
               y={CENTER_Y + COTA_TEXT_Y}
@@ -161,6 +168,20 @@ export function BuildingMap({
           </g>
         );
       })}
+
+      {/* ---- Marcos das distâncias ---- */}
+      {MARCOS.map((metros) => (
+        <circle
+          key={metros}
+          cx={toX(metros)}
+          cy={CENTER_Y + COTA_LINE_Y}
+          r={MARCO_RAIO}
+          fill="#6f6f6f"
+          stroke="#d5d4d4"
+          strokeWidth={1}
+          pointerEvents="none"
+        />
+      ))}
 
       {/* ---- Escada, à esquerda como na planta ---- */}
       <g>
@@ -249,8 +270,8 @@ export function BuildingMap({
 
       {/* ---- Pino de posição atual, como no mockup ---- */}
       <g
-        /* O pino tem 30px de altura: a ponta em +15 o deixa centrado na faixa. */
-        transform={`translate(${playerX} ${CENTER_Y + 15})`}
+        /* A ponta encosta logo acima do marco da posição atual. */
+        transform={`translate(${playerX} ${CENTER_Y + COTA_LINE_Y - MARCO_RAIO - 1.5})`}
         style={{ transition: 'transform 400ms cubic-bezier(.4,0,.2,1)' }}
       >
         <path
