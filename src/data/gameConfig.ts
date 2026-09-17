@@ -19,7 +19,7 @@ export const gameConfig = {
   refillMinutes: 4,
 
   /** Duração de um bloqueio temporário, em minutos de jogo (decisão Q16). */
-  blockDurationMinutes: 25,
+  blockDurationMinutes: 10,
 
   /** Turno de referência: régua de eficiência, nunca condição de derrota (decisão L6). */
   referenceShiftMinutes: 140,
@@ -29,7 +29,7 @@ export const gameConfig = {
    * Referência espacial mínima — não é "rota ótima", pois depósito, pendências
    * e decisões podem alterar o custo total (decisão Q12).
    */
-  minimumSweepMeters: 70,
+  minimumSweepMeters: 73.5,
 
   /** Chave do histórico local de partidas (decisão Q12/L7). */
   historyStorageKey: 'operacao-limpeza:historico:v1',

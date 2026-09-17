@@ -1,4 +1,4 @@
-import { formatMinutes, type ActionSummary, type Availability } from '../domain/effects';
+import { formatMeters, formatMinutes, type ActionSummary, type Availability } from '../domain/effects';
 import { travelMinutes } from '../domain/movement';
 import type { RoomDef, RoomState, SituationAction, SituationDef } from '../domain/types';
 import { SituationCard } from './SituationCard';
@@ -81,7 +81,7 @@ export function RoomConfirmDialog({
           </p>
 
           <div className="mt-5 w-full space-y-4 border-t border-line pt-4">
-            <Linha icon={Icon.distancia} label="Deslocamento" value={`+ ${distance} m`} detail={`${formatMinutes(travelMinutes(distance))} min de caminhada`} />
+            <Linha icon={Icon.distancia} label="Deslocamento" value={`+ ${formatMeters(distance)} m`} detail={`${formatMinutes(travelMinutes(distance))} min de caminhada`} />
             <Linha
               icon={Icon.tempo}
               label={isDeposito ? 'Recarga do carrinho' : isReturn ? 'Serviço restante' : 'Tempo base de limpeza'}
@@ -190,7 +190,7 @@ export function SituationDialog({
             <p className="mt-3 text-center text-[13.5px] text-txt-2">Você está em</p>
             <p className="text-center text-[19px] font-bold text-txt">{room.name}</p>
             <div className="mt-5 w-full space-y-4 border-t border-line pt-4">
-              <Linha icon={Icon.distancia} label="Deslocamento" value={`+ ${distance} m`} />
+              <Linha icon={Icon.distancia} label="Deslocamento" value={`+ ${formatMeters(distance)} m`} />
               <Linha icon={Icon.tempo} label="Tempo base de limpeza" value={`${cleaningMinutes} min`} />
             </div>
           </aside>

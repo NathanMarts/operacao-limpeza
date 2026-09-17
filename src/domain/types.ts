@@ -37,6 +37,12 @@ export type RoomDef = {
   spanWidthMeters: number;
   /** Profundidade relativa; > 1 reproduz a saliência da ala esquerda da planta. */
   depth: number;
+  /**
+   * Ambiente desenhado DENTRO do envelope de outro, como o depósito dentro do
+   * bloco do banheiro. Só afeta o desenho: o aninhado continua tendo porta e
+   * posição próprias no corredor, e é um destino independente.
+   */
+  nestedIn?: RoomId;
   /** A caixa de escada atravessa o corredor, em vez de ficar de um lado só. */
   straddlesCorridor?: boolean;
 };
@@ -69,6 +75,19 @@ export type ChargeExpr =
   | { kind: 'const'; value: number }
   | { kind: 'roomCostPlus'; value: number };
 
+/** Bônus que vale para as PRÓXIMAS salas, não para a atual. */
+export type BuffKind = 'tempo' | 'material';
+
+export type ActiveBuff = {
+  id: string;
+  label: string;
+  kind: BuffKind;
+  /** Minutos (ou cargas) abatidos por sala trabalhada. */
+  amount: number;
+  /** Quantas salas ainda recebem o abatimento. */
+  roomsLeft: number;
+};
+
 export type Effect =
   | { type: 'cleanTime'; amount: TimeExpr }
   | { type: 'eventTime'; amount: TimeExpr }
@@ -80,7 +99,12 @@ export type Effect =
   | { type: 'leaveUnstarted' }
   | { type: 'addDirt'; minutes: number }
   | { type: 'moveTo'; target: 'deposito' | 'entrada' }
-  | { type: 'blockRoom'; target: 'self' | 'nearestOther'; minutes: number };
+  | { type: 'blockRoom'; target: 'self' | 'nearestOther'; minutes: number }
+  /** Libera um objetivo bloqueado. Capacidade genérica: qualquer situação pode
+   *  melhorar a rota, não só a que a introduziu. */
+  | { type: 'unblockRoom'; target: 'nearestBlocked' }
+  | { type: 'gainCharges'; amount: number }
+  | { type: 'grantBuff'; kind: BuffKind; label: string; amount: number; rooms: number };
 
 export type Requirement = { type: 'minCharges'; amount: ChargeExpr };
 
@@ -94,6 +118,8 @@ export type SituationAction = {
 
 export type SituationCondition =
   | { type: 'chargesAtMost'; value: number }
+  /** Só faz sentido oferecer "liberar" se existe algo bloqueado para liberar. */
+  | { type: 'hasBlockedObjective' }
   | { type: 'chargesAtLeastRoomCost' }
   | { type: 'roomKindIsNot'; kind: RoomKind }
   | { type: 'hasOtherBlockableObjective' };
@@ -102,6 +128,20 @@ export type SituationDef = {
   id: string;
   title: string;
   prompt: string;
+  /**
+   * Tipos de ambiente em que esta situação faz sentido. Ausente = qualquer
+   * ambiente limpável. Uma sala de aula, um banheiro e uma escada têm
+   * problemas diferentes; misturar tudo tornava as situações genéricas.
+   */
+  appliesTo?: RoomKind[];
+  /**
+   * Situação geral que disputa o sorteio em pé de igualdade com as específicas.
+   * Por padrão, uma específica do ambiente ganha de uma geral; quem marca isto
+   * escapa dessa despriorização — é o caso das gerais que representam um estado
+   * relevante da partida (carrinho baixo, falta de água), que precisam poder
+   * aparecer justamente quando esse estado acontece.
+   */
+  competesWithScoped?: boolean;
   /** Pré-condições de elegibilidade: situações incoerentes nunca são oferecidas (Q14). */
   conditions: SituationCondition[];
   actions: [SituationAction, SituationAction, SituationAction];
@@ -137,6 +177,8 @@ export type ActiveSituation = {
   roomId: RoomId;
   /** Alvo já resolvido do bloqueio `nearestOther`, para a carta poder anunciá-lo (C2). */
   blockTargetId: RoomId | null;
+  /** Alvo já resolvido de `unblockRoom`, para a carta dizer qual ambiente libera. */
+  unblockTargetId?: RoomId | null;
 };
 
 export type Phase = 'mapa' | 'confirmacao' | 'situacao' | 'final';
@@ -156,6 +198,8 @@ export type GameState = {
   pendingTargetId: RoomId | null;
   situation: ActiveSituation | null;
   /** Estado do gerador determinístico e do saco de situações (Q5/Q14). */
+  /** Bônus diferidos em vigor, consumidos a cada sala trabalhada. */
+  buffs: ActiveBuff[];
   rngState: number;
   bag: string[];
   lastSituationId: string | null;

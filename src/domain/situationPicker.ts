@@ -37,6 +37,38 @@ export function findNearestBlockable(
   return best.id;
 }
 
+/**
+ * Objetivo bloqueado mais próximo — alvo de `unblockRoom`. Espelha
+ * `findNearestBlockable`, mas procura o que está travado em vez do que pode
+ * ser travado.
+ */
+export function findNearestBlocked(
+  state: GameState,
+  currentRoom: RoomDef,
+  totalNow: number,
+): string | null {
+  const candidates = objectives
+    .filter((room) => room.id !== currentRoom.id)
+    .filter((room) => {
+      const roomState = state.rooms[room.id];
+      if (roomState.status === 'concluida') return false;
+      return roomState.blockedUntilMinute !== null && roomState.blockedUntilMinute > totalNow;
+    });
+
+  if (candidates.length === 0) return null;
+
+  let best = candidates[0];
+  let bestDistance = distanceBetween(currentRoom.corridorPosition, best.corridorPosition);
+  for (const room of candidates.slice(1)) {
+    const distance = distanceBetween(currentRoom.corridorPosition, room.corridorPosition);
+    if (distance < bestDistance || (distance === bestDistance && room.id < best.id)) {
+      best = room;
+      bestDistance = distance;
+    }
+  }
+  return best.id;
+}
+
 function conditionHolds(
   condition: SituationCondition,
   state: GameState,
@@ -52,6 +84,8 @@ function conditionHolds(
       return room.kind !== condition.kind;
     case 'hasOtherBlockableObjective':
       return findNearestBlockable(state, room, totalNow) !== null;
+    case 'hasBlockedObjective':
+      return findNearestBlocked(state, room, totalNow) !== null;
   }
 }
 
@@ -67,6 +101,10 @@ export function isEligible(
   roomState: RoomState,
   totalNow: number,
 ): boolean {
+  /* Escopo por tipo de ambiente: sala, banheiro e escada têm problemas
+     próprios, e uma situação fora de contexto quebra a verossimilhança. */
+  if (situation.appliesTo && !situation.appliesTo.includes(room.kind)) return false;
+
   const conditionsOk = situation.conditions.every((condition) =>
     conditionHolds(condition, state, room, totalNow),
   );
@@ -105,10 +143,24 @@ export function drawSituation(
         bag = reshuffled.items;
         rngState = reshuffled.state;
       }
-      const index = bag.findIndex((id) => {
+      const elegivel = (id: string) => {
         if (!allowRepeat && id === state.lastSituationId) return false;
         return isEligible(situationsById[id], state, room, roomState, totalNow);
-      });
+      };
+
+      /* Conteúdo específico do ambiente ganha de uma geral quando as duas
+         estão elegíveis — sem isso as gerais monopolizam o sorteio, já que são
+         elegíveis em todos os ambientes. Gerais marcadas com
+         `competesWithScoped` não sofrem a despriorização. A ordem dentro de
+         cada faixa continua sendo a do saco, então o sorteio segue
+         determinístico pela semente. */
+      const prioritario = (id: string) => {
+        const situation = situationsById[id];
+        return Boolean(situation.appliesTo) || Boolean(situation.competesWithScoped);
+      };
+
+      let index = bag.findIndex((id) => prioritario(id) && elegivel(id));
+      if (index < 0) index = bag.findIndex((id) => elegivel(id));
       if (index >= 0) {
         const [situationId] = bag.splice(index, 1);
         return { situationId, bag, rngState };

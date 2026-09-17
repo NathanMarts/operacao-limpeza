@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useTheme } from '../hooks/useTheme';
 import { BuildingMap } from '../components/BuildingMap';
 import { RoomConfirmDialog, SituationDialog } from '../components/Dialogs';
 import { FinalResult } from '../components/FinalResult';
 import {
+  BuffPanel,
   GameHeader,
   Instructions,
   Legend,
@@ -18,11 +20,17 @@ import { Icon } from '../components/icons';
 
 export function Game() {
   const game = useCleaningGame();
+  const { theme, toggleTheme } = useTheme();
   const [tab, setTab] = useState<'mapa' | 'instrucoes'>('mapa');
   const [showRoute, setShowRoute] = useState(true);
   /* Mapa expandido: esconde a coluna de apoio e devolve a largura ao desenho. */
   const [expandido, setExpandido] = useState(false);
+  /* Trecho em exibição; `null` acompanha o trecho atual. */
+  const [stepVisivel, setStepVisivel] = useState<number | null>(null);
   const { state, actions, preview, situationView, summary } = game;
+
+  /* Andar de novo volta a exibir o trecho atual em vez de congelar no passado. */
+  useEffect(() => setStepVisivel(null), [state.route.length]);
 
   return (
     <div className="min-h-screen bg-bg">
@@ -32,6 +40,8 @@ export function Game() {
         charges={state.charges}
         tab={tab}
         onTab={setTab}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       <main
@@ -58,7 +68,7 @@ export function Game() {
                     type="checkbox"
                     checked={showRoute}
                     onChange={(event) => setShowRoute(event.target.checked)}
-                    className="h-3.5 w-3.5 accent-[#4f7df3]"
+                    className="h-3.5 w-3.5 accent-[var(--color-accent)]"
                   />
                   Trajeto
                 </label>
@@ -81,6 +91,7 @@ export function Game() {
                 state={state}
                 totalMinutes={game.totalMinutes}
                 showRoute={showRoute}
+                selectedStep={stepVisivel}
                 cleaningMinutesFor={(roomId) => previewCleaningMinutes(state, roomId)}
                 minutesUntilFree={game.minutesUntilFree}
                 onSelect={actions.select}
@@ -100,7 +111,7 @@ export function Game() {
               <button
                 type="button"
                 onClick={actions.wait}
-                className="ml-auto rounded-lg bg-warn px-5 py-2 text-[14px] font-semibold text-[#2b1f02] transition-opacity hover:opacity-90"
+                className="ml-auto rounded-lg bg-warn px-5 py-2 text-[14px] font-semibold text-warn-ink transition-opacity hover:opacity-90"
               >
                 Aguardar no corredor
               </button>
@@ -110,7 +121,8 @@ export function Game() {
 
         {/* Coluna direita */}
         <aside className="space-y-4">
-          <SequencePanel state={state} />
+          <BuffPanel buffs={state.buffs} />
+          <SequencePanel state={state} selectedStep={stepVisivel} onSelectStep={setStepVisivel} />
           <SummaryPanel summary={summary} />
 
           <div className="space-y-2.5">

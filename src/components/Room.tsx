@@ -27,6 +27,8 @@ export type RoomGeometry = { x: number; y: number; width: number; height: number
 type Props = {
   room: RoomDef;
   roomState: RoomState;
+  /** Fração da profundidade tomada por um ambiente aninhado, junto ao corredor. */
+  reservedDepth?: number;
   geometry: RoomGeometry;
   visual: RoomVisualState;
   minutesUntilFree: number;
@@ -41,6 +43,7 @@ export function Room({
   visual,
   minutesUntilFree,
   cleaningMinutes,
+  reservedDepth = 0,
   onSelect,
 }: Props) {
   const interactive = visual === 'disponivel' || visual === 'pendente' || visual === 'apoio';
@@ -48,6 +51,9 @@ export function Room({
   const cx = x + width / 2;
   const cy = y + height / 2;
   const tall = height > 50;
+  /* Faixa junto ao corredor tomada por um ambiente aninhado (ex.: o depósito
+     dentro do banheiro). As cabines recuam para não invadi-la. */
+  const reservada = reservedDepth * height;
 
   /* O estado muda saturação e contorno; a planta segue clara em todos eles. */
   const fill = TONE[room.tone];
@@ -227,21 +233,26 @@ export function Room({
         </g>
       )}
 
-      {/* Cabines dos banheiros, como no desenho original */}
+      {/* Cabines dos banheiros, encostadas na parede oeste como no original */}
       {room.kind === 'wc' &&
-        Array.from({ length: 3 }).map((_, index) => (
+        (() => {
+          const bandaY = room.side === 'top' ? y : y + reservada;
+          const bandaH = height - reservada;
+          const passo = (bandaH - 12) / 3;
+          return Array.from({ length: 3 }).map((_, index) => (
           <rect
             key={index}
             x={x + 5}
-            y={y + 6 + index * ((height - 12) / 3)}
+            y={bandaY + 6 + index * passo}
             width={15}
-            height={(height - 12) / 3 - 4}
+            height={passo - 4}
             fill="#48a39a"
             stroke={PAREDE}
             strokeWidth={1}
             pointerEvents="none"
           />
-        ))}
+          ));
+        })()}
 
       {/* Vão e folha da porta, exatamente na posição usada no cálculo */}
       {room.kind !== 'escada' && room.kind !== 'entrada' && (

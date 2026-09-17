@@ -6,7 +6,8 @@ import { FinalResult } from '../components/FinalResult';
 import { SituationDialog } from '../components/Dialogs';
 import { situationsById } from '../data/situations';
 import { objectives, roomsById } from '../data/rooms';
-import { actionAvailability, summarizeAction, type EffectContext } from '../domain/effects';
+import { travelMinutes } from '../domain/movement';
+import { actionAvailability, formatMeters, summarizeAction, type EffectContext } from '../domain/effects';
 import {
   chooseAction,
   confirmTravel,
@@ -79,7 +80,7 @@ describe('partida completa', () => {
     );
     const somaDistancia = state.log.reduce((total, entry) => total + entry.deltaDistance, 0);
     expect(somaDistancia).toBe(state.distanceTraveled);
-    expect(somaLog + somaDistancia / 5).toBeCloseTo(currentTotal(state));
+    expect(somaLog + travelMinutes(somaDistancia)).toBeCloseTo(currentTotal(state));
   });
 });
 
@@ -91,6 +92,7 @@ describe('renderização dos componentes', () => {
         state,
         totalMinutes: 0,
         showRoute: true,
+        selectedStep: null,
         cleaningMinutesFor: () => 5,
         minutesUntilFree: () => 0,
         onSelect: () => {},
@@ -153,8 +155,8 @@ describe('renderização dos componentes', () => {
     );
     expect(html).toContain('Decomposição da partida');
     expect(html).toContain('Referência espacial mínima');
-    expect(html).toContain(String(summary.distanceTraveled));
-    expect(html).toContain(String(summary.minimumSweepMeters));
+    expect(html).toContain(formatMeters(summary.distanceTraveled));
+    expect(html).toContain(formatMeters(summary.minimumSweepMeters));
     // Cada passo do log aparece na tabela.
     expect(html).toContain(played.log[0].title);
     expect(html).toContain(played.log.at(-1)!.title);

@@ -1,4 +1,4 @@
-import { formatMinutes } from '../domain/effects';
+import { formatMeters, formatMinutes } from '../domain/effects';
 import { travelMinutes } from '../domain/movement';
 import type { Summary } from '../domain/game';
 import type { GameState } from '../domain/types';
@@ -33,7 +33,7 @@ export function FinalResult({ state, summary, history, onRestart, onClearHistory
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Metric icon={Icon.tempo} label="Tempo total" value={`${formatMinutes(summary.totalMinutes)} min`} destaque />
-          <Metric icon={Icon.distancia} label="Distância total" value={`${summary.distanceTraveled} m`} />
+          <Metric icon={Icon.distancia} label="Distância total" value={`${formatMeters(summary.distanceTraveled)} m`} />
           <Metric icon={Icon.limpeza} label="Tempo de limpeza" value={`${formatMinutes(summary.cleaningMinutes)} min`} />
           <Metric icon={Icon.decisoes} label="Tempo de decisões" value={`${formatMinutes(summary.eventMinutes)} min`} />
         </div>
@@ -41,12 +41,12 @@ export function FinalResult({ state, summary, history, onRestart, onClearHistory
         <div className="mt-4 rounded-xl border border-line bg-panel p-4">
           <ShiftBar total={summary.totalMinutes} reference={summary.referenceShiftMinutes} />
           <p className="mt-3 text-[13px] leading-relaxed text-txt-2">
-            Referência espacial mínima: <strong className="text-txt">{summary.minimumSweepMeters} m</strong>{' '}
+            Referência espacial mínima: <strong className="text-txt">{formatMeters(summary.minimumSweepMeters)} m</strong>{' '}
             — o corredor percorrido uma única vez, sem voltas.
             {excedente > 0 && (
               <>
                 {' '}
-                Você percorreu <strong className="text-txt">{excedente} m</strong> a mais, o equivalente a{' '}
+                Você percorreu <strong className="text-txt">{formatMeters(excedente)} m</strong> a mais, o equivalente a{' '}
                 {formatMinutes(travelMinutes(excedente))} min. Idas ao depósito e retornos de pendência
                 explicam parte dessa diferença.
               </>
@@ -85,7 +85,7 @@ export function FinalResult({ state, summary, history, onRestart, onClearHistory
                       <span className="block text-[12px] text-txt-3">{entry.detail}</span>
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums text-accent">
-                      {entry.deltaDistance > 0 ? `${entry.deltaDistance} m` : '—'}
+                      {entry.deltaDistance > 0 ? `${formatMeters(entry.deltaDistance)} m` : '—'}
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums text-txt-2">
                       {entry.deltaCleaning > 0 ? `${entry.deltaCleaning} min` : '—'}
@@ -131,7 +131,7 @@ export function FinalResult({ state, summary, history, onRestart, onClearHistory
                     <span className="rounded bg-warn/15 px-2 py-0.5 text-[11px] text-warn">incompleta</span>
                   )}
                   <span className="ml-auto tabular-nums text-txt-2">
-                    {entry.distanceTraveled} m · {formatMinutes(entry.totalMinutes)} min
+                    {formatMeters(entry.distanceTraveled)} m · {formatMinutes(entry.totalMinutes)} min
                   </span>
                 </li>
               ))}

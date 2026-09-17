@@ -2,11 +2,31 @@ import { describe, expect, it } from 'vitest';
 import { situations } from '../data/situations';
 import { roomsById } from '../data/rooms';
 import { gameConfig } from '../data/gameConfig';
-import { actionAvailability, evalCharges, evalTime, targetPosition, type EffectContext } from './effects';
+import {
+  actionAvailability,
+  describeAction,
+  evalCharges,
+  evalTime,
+  summarizeAction,
+  targetPosition,
+  type EffectContext,
+} from './effects';
 import { distanceBetween } from './movement';
 import { createInitialState, confirmTravel, selectRoom, chooseAction, currentTotal } from './game';
 import { isEligible } from './situationPicker';
-import type { RoomState, SituationAction } from './types';
+import type { GameState, RoomState, SituationAction } from './types';
+import { objectives as todosObjetivos } from '../data/rooms';
+
+/** Chega numa sala pagando o deslocamento, sem passar pelo sorteio. */
+function arriveAt(state: GameState, roomId: string): GameState {
+  return confirmTravel(selectRoom(state, roomId));
+}
+
+/** Força uma situação específica numa sala, para testar o efeito isolado. */
+function forceSituation(state: GameState, roomId: string, situationId: string): GameState {
+  const arrived = arriveAt(state, roomId);
+  return { ...arrived, phase: 'situacao', situation: { situationId, roomId, blockTargetId: null } };
+}
 
 /**
  * Vetor de custo de uma ação nas moedas do jogo. Todos os eixos são "quanto pior,
@@ -67,8 +87,22 @@ function costOf(action: SituationAction, ctx: EffectContext): CostVector {
       case 'blockRoom':
         cost.bloqueio += effect.minutes;
         break;
+      case 'unblockRoom':
+        // Liberar um objetivo é ganho de rota: custo negativo.
+        cost.bloqueio -= gameConfig.blockDurationMinutes;
+        break;
       case 'moveTo':
         cost.deslocamento += distanceBetween(ctx.position, targetPosition(effect.target));
+        break;
+      case 'gainCharges':
+        // Ganhar material é custo negativo, como reabastecer.
+        cost.material -= Math.min(effect.amount, gameConfig.maxCharges - charges);
+        charges += effect.amount;
+        break;
+      case 'grantBuff':
+        // Um bônus diferido vale trabalho futuro poupado.
+        if (effect.kind === 'tempo') cost.trabalhoFuturo -= effect.amount * effect.rooms;
+        else cost.material -= effect.amount * effect.rooms;
         break;
     }
   }
@@ -258,5 +292,182 @@ describe('determinismo', () => {
     for (let i = 1; i < drawn.length; i += 1) {
       expect(drawn[i]).not.toBe(drawn[i - 1]);
     }
+  });
+});
+
+describe('escopo por tipo de ambiente', () => {
+  const kindsPorSituacao = () =>
+    situations.map((situation) => ({ id: situation.id, appliesTo: situation.appliesTo }));
+
+  it('cada tipo de ambiente tem situações próprias além das genéricas', () => {
+    const porTipo = (kind: 'sala' | 'wc' | 'escada') =>
+      kindsPorSituacao().filter((s) => s.appliesTo?.includes(kind)).length;
+
+    // Sem isso, os três tipos de cômodo receberiam o mesmo conteúdo genérico.
+    expect(porTipo('sala')).toBeGreaterThanOrEqual(4);
+    expect(porTipo('wc')).toBeGreaterThanOrEqual(4);
+    expect(porTipo('escada')).toBeGreaterThanOrEqual(3);
+    // E ainda sobram situações que valem em qualquer ambiente.
+    expect(kindsPorSituacao().filter((s) => !s.appliesTo).length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('uma situação escopada nunca é oferecida num tipo fora do seu escopo', () => {
+    const state = createInitialState();
+    for (const situation of situations) {
+      if (!situation.appliesTo) continue;
+      for (const room of todosObjetivos) {
+        if (situation.appliesTo.includes(room.kind)) continue;
+        expect(
+          isEligible(situation, state, room, cleanRoomState, 0),
+          `${situation.id} (escopo ${situation.appliesTo.join('/')}) apareceu em ${room.id} (${room.kind})`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it('todo ambiente limpável tem ao menos uma situação elegível', () => {
+    const state = createInitialState();
+    for (const room of todosObjetivos) {
+      const elegiveis = situations.filter((situation) =>
+        isEligible(situation, state, room, cleanRoomState, 0),
+      );
+      expect(elegiveis.length, `${room.id} (${room.kind}) sem situação elegível`).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('bônus diferidos', () => {
+  /** Leva o jogador até uma sala e escolhe a ação pedida. */
+  function jogar(state: GameState, roomId: string, situationId: string, actionId: string) {
+    const levado = forceSituation(state, roomId, situationId);
+    return chooseAction(levado, actionId);
+  }
+
+  it('um bônus de tempo abate minutos nas próximas salas e depois expira', () => {
+    // "Caprichar e pegar embalo": −2 min nas 2 salas seguintes.
+    let state = jogar(createInitialState(), 'S5', 'sala-organizada', 'caprichar');
+    expect(state.buffs).toHaveLength(1);
+    expect(state.buffs[0].roomsLeft).toBe(2);
+
+    const antes = state.cleaningMinutes;
+    state = jogar(state, 'S4', 'sala-suja', 'completa');
+    const gastoComBonus = state.cleaningMinutes - antes;
+    // S4 tem 4 min de base; o bônus abate 2.
+    expect(gastoComBonus).toBe(roomsById['S4'].baseCleaningMinutes - 2);
+    expect(state.buffs[0].roomsLeft).toBe(1);
+
+    state = jogar(state, 'S3', 'sala-suja', 'completa');
+    expect(state.buffs).toHaveLength(0); // consumido nas duas salas
+
+    const antesSemBonus = state.cleaningMinutes;
+    state = jogar(state, 'S2', 'sala-suja', 'completa');
+    expect(state.cleaningMinutes - antesSemBonus).toBe(roomsById['S2'].baseCleaningMinutes);
+  });
+
+  it('o bônus nunca devolve mais tempo do que a sala custou', () => {
+    let state = jogar(createInitialState(), 'S5', 'sala-organizada', 'caprichar');
+    const antes = state.cleaningMinutes;
+    // Retorno a uma pendência de 3 min com um bônus de 2: abate só 2.
+    state = {
+      ...state,
+      rooms: {
+        ...state.rooms,
+        S3: { ...state.rooms['S3'], status: 'pendente', residualMinutes: 3 },
+      },
+    };
+    state = confirmTravel(selectRoom(state, 'S3'));
+    expect(state.cleaningMinutes - antes).toBe(1);
+    expect(state.cleaningMinutes - antes).toBeGreaterThanOrEqual(0);
+  });
+
+  it('um bônus de material devolve cargas, sem passar do teto do carrinho', () => {
+    let state = jogar(createInitialState(), 'WC-A', 'carrinho-da-manutencao', 'levar-sobra');
+    expect(state.buffs[0].kind).toBe('material');
+
+    const antes = state.charges;
+    state = jogar(state, 'S5', 'sala-suja', 'completa');
+    // S5 custa 1 carga e o bônus devolve 1: o saldo não muda.
+    expect(state.charges).toBe(antes);
+    expect(state.charges).toBeLessThanOrEqual(gameConfig.maxCharges);
+  });
+
+  it('o abatimento aparece no log, para o total continuar explicável', () => {
+    let state = jogar(createInitialState(), 'S5', 'sala-organizada', 'caprichar');
+    state = jogar(state, 'S4', 'sala-suja', 'completa');
+    const entrada = state.log.at(-1)!;
+    expect(entrada.detail).toContain('Ritmo embalado');
+  });
+});
+
+describe('regras estruturais do catálogo', () => {
+  it('todo bloqueio usa a duração do config, sem valor escrito na mão', () => {
+    for (const situation of situations) {
+      for (const action of situation.actions) {
+        for (const effect of action.effects) {
+          if (effect.type !== 'blockRoom') continue;
+          expect(
+            effect.minutes,
+            `${situation.id}/${action.id} tem bloqueio fora do gameConfig`,
+          ).toBe(gameConfig.blockDurationMinutes);
+        }
+      }
+    }
+  });
+
+  it('todo efeito do catálogo é visível antes da escolha', () => {
+    const ctx: EffectContext = {
+      room: roomsById['S5'],
+      roomState: cleanRoomState,
+      charges: 5,
+      position: roomsById['S5'].corridorPosition,
+      blockTargetId: 'S12',
+    };
+    for (const situation of situations) {
+      for (const action of situation.actions) {
+        // Um efeito sem selo seria consequência escondida (decisão Q10).
+        expect(
+          describeAction(action, ctx).length,
+          `${situation.id}/${action.id} tem efeito sem selo visível`,
+        ).toBe(action.effects.length);
+
+        const resumo = summarizeAction(action, ctx);
+        expect(
+          resumo.agora.length + resumo.depois.length,
+          `${situation.id}/${action.id} não resume nada nas cartas`,
+        ).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('toda consequência futura tem lugar no estado da partida', () => {
+    /* Pendência -> roomState.residualMinutes; sujeira -> extraDirtMinutes;
+       bloqueio -> blockedUntilMinute; bônus -> state.buffs. Um efeito futuro
+       sem campo correspondente seria promessa que o jogo não cumpre. */
+    const state = createInitialState();
+    const campos: Record<string, boolean> = {
+      leavePending: 'residualMinutes' in state.rooms['S5'],
+      addDirt: 'extraDirtMinutes' in state.rooms['S5'],
+      blockRoom: 'blockedUntilMinute' in state.rooms['S5'],
+      grantBuff: Array.isArray(state.buffs),
+      leaveUnstarted: 'status' in state.rooms['S5'],
+    };
+    const futuros = new Set<string>();
+    for (const situation of situations) {
+      for (const action of situation.actions) {
+        for (const effect of action.effects) {
+          if (effect.type in campos) futuros.add(effect.type);
+        }
+      }
+    }
+    for (const tipo of futuros) {
+      expect(campos[tipo], `efeito futuro "${tipo}" sem campo no estado`).toBe(true);
+    }
+    // O catálogo de fato usa as quatro moedas futuras.
+    expect(futuros.size).toBeGreaterThanOrEqual(4);
+  });
+
+  it('cada situação tem id único', () => {
+    const ids = situations.map((situation) => situation.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });

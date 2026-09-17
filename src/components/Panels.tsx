@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
 import type { ComponentType, ReactNode } from 'react';
 import { Icon } from './icons';
-import { formatMinutes } from '../domain/effects';
+import { formatMeters, formatMinutes } from '../domain/effects';
 import { gameConfig } from '../data/gameConfig';
 import { objectives } from '../data/rooms';
-import type { GameState } from '../domain/types';
+import type { ActiveBuff, GameState } from '../domain/types';
 import type { Summary } from '../domain/game';
 
 /* ------------------------------------------------------------------ */
@@ -41,13 +41,18 @@ export function GameHeader({
   charges,
   tab,
   onTab,
+  theme,
+  onToggleTheme,
 }: {
   totalMinutes: number;
   distance: number;
   charges: number;
   tab: 'mapa' | 'instrucoes';
   onTab: (next: 'mapa' | 'instrucoes') => void;
+  theme: 'dark' | 'light';
+  onToggleTheme: () => void;
 }) {
+  const indoParaClaro = theme === 'dark';
   return (
     <header className="flex flex-wrap items-center gap-4 bg-header px-5 py-3.5 sm:px-6">
       <div className="flex items-center gap-3.5">
@@ -71,13 +76,27 @@ export function GameHeader({
 
       <div className="ml-auto flex flex-wrap gap-3">
         <MetricCard icon={Icon.tempo} label="Tempo total" value={`${formatMinutes(totalMinutes)} min`} />
-        <MetricCard icon={Icon.distancia} label="Distância percorrida" value={`${distance} m`} />
+        <MetricCard icon={Icon.distancia} label="Distância percorrida" value={`${formatMeters(distance)} m`} />
         <MetricCard
           icon={Icon.material}
           label="Material"
           value={`${charges}/${gameConfig.maxCharges}`}
           alert={charges === 0}
         />
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          aria-pressed={!indoParaClaro}
+          title={indoParaClaro ? 'Mudar para o tema claro' : 'Mudar para o tema escuro'}
+          className="flex items-center gap-2 rounded-xl border border-line bg-panel px-4 text-[13px] font-medium text-txt-2 transition-colors hover:text-txt"
+        >
+          {indoParaClaro ? (
+            <Icon.claro className="h-[18px] w-[18px]" aria-hidden />
+          ) : (
+            <Icon.escuro className="h-[18px] w-[18px]" aria-hidden />
+          )}
+          {indoParaClaro ? 'Claro' : 'Escuro'}
+        </button>
       </div>
     </header>
   );
@@ -215,11 +234,22 @@ export function TipPanel() {
 /* Coluna da direita                                                   */
 /* ------------------------------------------------------------------ */
 
-export function SequencePanel({ state }: { state: GameState }) {
+export function SequencePanel({
+  state,
+  selectedStep,
+  onSelectStep,
+}: {
+  state: GameState;
+  /** Trecho em exibição no mapa; `null` significa "o atual". */
+  selectedStep: number | null;
+  onSelectStep: (index: number | null) => void;
+}) {
   const total = objectives.length;
   const linhas = Array.from({ length: total }, (_, index) => state.route[index] ?? null);
   const atual = state.route.length;
   const ativoRef = useRef<HTMLLIElement>(null);
+  /* Sem escolha explícita, o mapa mostra o último trecho — destaque acompanha. */
+  const emExibicao = selectedStep ?? atual - 1;
 
   /* Mantém a parada atual à vista sem esticar o painel: quem rola é a lista. */
   useEffect(() => {
@@ -228,17 +258,11 @@ export function SequencePanel({ state }: { state: GameState }) {
 
   return (
     <Card title="Sua sequência" icon={Icon.sequencia}>
-      <ol className="scroll-slim max-h-[236px] space-y-1 overflow-y-auto pr-1">
+      <ol className="scroll-slim max-h-[236px] space-y-1 overflow-y-auto px-1">
         {linhas.map((step, index) => {
-          const ativo = index === atual - 1;
-          return (
-            <li
-              key={index}
-              ref={ativo ? ativoRef : undefined}
-              className={`flex items-center gap-2.5 rounded-md px-2 py-1 ${
-                ativo ? 'bg-row-active ring-1 ring-accent/50' : ''
-              }`}
-            >
+          const exibindo = index === emExibicao;
+          const conteudo = (
+            <>
               <span
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${
                   step ? 'bg-accent text-white' : 'bg-btn text-txt-3'
@@ -246,15 +270,36 @@ export function SequencePanel({ state }: { state: GameState }) {
               >
                 {index + 1}
               </span>
-              <span className={`flex-1 truncate text-[13px] ${step ? 'text-txt' : 'text-txt-3'}`}>
+              <span className={`flex-1 truncate text-left text-[13px] ${step ? 'text-txt' : 'text-txt-3'}`}>
                 {step ? step.roomName : '—'}
               </span>
               {step && (
                 <span className="shrink-0 text-[12px] tabular-nums text-txt-2">
-                  {step.distance} m
+                  {formatMeters(step.distance)} m
                   {step.purpose === 'retorno' && <span className="text-warn"> ↩</span>}
                   {step.purpose === 'deposito' && <span className="text-ok"> ⟳</span>}
                 </span>
+              )}
+            </>
+          );
+
+          return (
+            <li key={index} ref={index === atual - 1 ? ativoRef : undefined}>
+              {step ? (
+                <button
+                  type="button"
+                  onClick={() => onSelectStep(exibindo ? null : index)}
+                  title="Ver este trecho no mapa"
+                  className={`flex w-full items-center gap-2.5 rounded-md border px-2 py-1 transition-colors hover:bg-row-active ${
+                    exibindo ? 'border-accent/50 bg-row-active' : 'border-transparent'
+                  }`}
+                >
+                  {conteudo}
+                </button>
+              ) : (
+                <div className="flex items-center gap-2.5 rounded-md border border-transparent px-2 py-1">
+                  {conteudo}
+                </div>
               )}
             </li>
           );
@@ -265,6 +310,40 @@ export function SequencePanel({ state }: { state: GameState }) {
           + {state.route.length - total} paradas extras (retornos e recargas)
         </p>
       )}
+      {atual > 0 && (
+        <p className="mt-2 text-center text-[11.5px] text-txt-3">
+          Clique em uma parada para rever o trecho no mapa.
+        </p>
+      )}
+    </Card>
+  );
+}
+
+/**
+ * Bônus diferidos em vigor. Precisa existir: um bônus que o jogador não vê é
+ * informação escondida, e a regra do jogo é transparência total (Q10).
+ */
+export function BuffPanel({ buffs }: { buffs: ActiveBuff[] }) {
+  if (buffs.length === 0) return null;
+  return (
+    <Card title="Vantagens em vigor" icon={Icon.bonus} tone="text-ok">
+      <ul className="space-y-2">
+        {buffs.map((buff) => (
+          <li key={buff.id} className="flex items-start gap-2.5 text-[13px]">
+            <span className="mt-0.5 flex h-5 shrink-0 items-center rounded-md bg-ok/15 px-1.5 text-[11px] font-semibold text-ok">
+              {buff.roomsLeft} {buff.roomsLeft === 1 ? 'sala' : 'salas'}
+            </span>
+            <span className="flex-1">
+              <span className="text-txt">{buff.label}</span>
+              <span className="block text-[12px] text-txt-2">
+                {buff.kind === 'tempo'
+                  ? `−${buff.amount} min por sala`
+                  : `−${buff.amount} carga por sala`}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }
@@ -273,7 +352,7 @@ export function SummaryPanel({ summary }: { summary: Summary }) {
   const linhas: [string, string][] = [
     ['Salas limpas', `${summary.concluidas.length} / ${summary.totalObjectives}`],
     ['Tempo de limpeza', `${formatMinutes(summary.cleaningMinutes)} min`],
-    ['Distância percorrida', `${summary.distanceTraveled} m`],
+    ['Distância percorrida', `${formatMeters(summary.distanceTraveled)} m`],
     ['Tempo de deslocamento', `${formatMinutes(summary.travelMinutes)} min`],
     ['Eventos (decisões)', `${formatMinutes(summary.eventMinutes)} min`],
   ];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildingSpanMeters, desenhoDaPorta, objectives, rooms } from './rooms';
+import { ENTRANCE_POSITION, buildingSpanMeters, desenhoDaPorta, objectives, rooms } from './rooms';
 import { gameConfig } from './gameConfig';
 
 describe('geometria da planta', () => {
@@ -16,8 +16,10 @@ describe('geometria da planta', () => {
 
   it('salas do mesmo lado não se sobrepõem', () => {
     for (const side of ['top', 'bottom'] as const) {
+      // Ambientes aninhados ficam DENTRO do envelope de outro de propósito;
+      // quem garante que eles se comportam é o teste seguinte.
       const ordenadas = rooms
-        .filter((room) => room.side === side)
+        .filter((room) => room.side === side && !room.nestedIn)
         .sort((a, b) => a.spanStartMeters - b.spanStartMeters);
 
       for (let i = 1; i < ordenadas.length; i += 1) {
@@ -28,6 +30,27 @@ describe('geometria da planta', () => {
           fimAnterior,
         );
       }
+    }
+  });
+
+  it('um ambiente aninhado cabe inteiro dentro do envelope do pai', () => {
+    const aninhados = rooms.filter((room) => room.nestedIn);
+    // A planta real tem o depósito dentro do bloco de cada banheiro.
+    expect(aninhados).toHaveLength(2);
+
+    for (const filho of aninhados) {
+      const pai = rooms.find((room) => room.id === filho.nestedIn);
+      expect(pai, `${filho.id} aponta para um pai inexistente`).toBeDefined();
+      expect(filho.side, `${filho.id} está do lado oposto ao pai`).toBe(pai!.side);
+
+      expect(filho.spanStartMeters).toBeGreaterThanOrEqual(pai!.spanStartMeters);
+      expect(filho.spanStartMeters + filho.spanWidthMeters).toBeLessThanOrEqual(
+        pai!.spanStartMeters + pai!.spanWidthMeters,
+      );
+      expect(filho.depth, `${filho.id} é mais fundo que o pai`).toBeLessThan(pai!.depth);
+
+      // Porta própria: o aninhado é destino independente no corredor.
+      expect(filho.corridorPosition).not.toBe(pai!.corridorPosition);
     }
   });
 
@@ -74,7 +97,8 @@ describe('geometria da planta', () => {
 
   it('a referência espacial mínima bate com a extensão real do corredor', () => {
     const maisLonge = Math.max(...objectives.map((room) => room.corridorPosition));
-    expect(gameConfig.minimumSweepMeters).toBe(maisLonge);
+    // A varredura começa na porta da entrada, que não está em zero no desenho.
+    expect(gameConfig.minimumSweepMeters).toBe(maisLonge - ENTRANCE_POSITION);
     expect(buildingSpanMeters).toBeGreaterThan(maisLonge);
   });
 });

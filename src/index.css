@@ -39,6 +39,7 @@
 
   --color-ok: #34d399;
   --color-warn: #f0b429;
+  --color-warn-ink: #2b1f02;
   --color-danger: #d4696c;
 
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -46,6 +47,40 @@
 
 :root {
   color-scheme: dark;
+}
+
+/*
+  Tema claro: branco e cinzas para o chrome. A PLANTA não muda — os tokens
+  --color-plan-* ficam de fora de propósito, porque uma planta impressa é clara
+  nos dois temas; escurecê-la inverteria a metáfora do desenho.
+  Os tons de ok/warn/danger escurecem, senão perdem contraste sobre branco.
+*/
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --color-bg: #f2f5f8;
+  --color-panel: #ffffff;
+  --color-panel-2: #f7f9fb;
+  --color-header: #ffffff;
+  --color-map-bg: #ffffff;
+  --color-modal: #ffffff;
+  --color-modal-card: #f7f9fb;
+  --color-btn: #e9edf2;
+  --color-line: #dde3ea;
+
+  --color-accent: #2f5fd8;
+  --color-accent-soft: #dfe8fd;
+  --color-row-active: #eaf0fe;
+  --color-total-box: #e4ebfd;
+
+  --color-txt: #16232b;
+  --color-txt-2: #53687a;
+  --color-txt-3: #7d90a1;
+
+  --color-ok: #0f8f63;
+  --color-warn: #b8770a;
+  --color-warn-ink: #ffffff;
+  --color-danger: #c0393d;
 }
 
 html,
@@ -90,6 +125,10 @@ body {
     scrollbar-width: thin;
     scrollbar-color: #23374a transparent;
   }
+
+  :root[data-theme='light'] * {
+    scrollbar-color: #c2ccd6 transparent;
+  }
 }
 
 ::-webkit-scrollbar {
@@ -119,6 +158,22 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: #35526d;
+}
+
+:root[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background-color: #c6d0da;
+}
+
+:root[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  background-color: #a9b6c3;
+}
+
+:root[data-theme='light'] .scroll-slim::-webkit-scrollbar-thumb {
+  background-color: #d2dae2;
+}
+
+:root[data-theme='light'] .scroll-slim:hover::-webkit-scrollbar-thumb {
+  background-color: #b3c0cc;
 }
 
 ::-webkit-scrollbar-corner {

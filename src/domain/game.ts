@@ -1,6 +1,6 @@
 import { gameConfig } from '../data/gameConfig';
-import { objectives, rooms, roomsById } from '../data/rooms';
-import { situationsById } from '../data/situations';
+import { ENTRANCE_POSITION, objectives, rooms, roomsById } from '../data/rooms';
+import { situations, situationsById } from '../data/situations';
 import {
   actionAvailability,
   effectiveBase,
@@ -11,8 +11,8 @@ import {
   type EffectContext,
 } from './effects';
 import { distanceBetween, totalMinutes, travelMinutes } from './movement';
-import { drawSituation, findNearestBlockable } from './situationPicker';
-import type { Effect, GameState, LogEntry, RoomDef, RoomState } from './types';
+import { drawSituation, findNearestBlockable, findNearestBlocked, isEligible } from './situationPicker';
+import type { ActiveBuff, Effect, GameState, LogEntry, RoomDef, RoomState } from './types';
 
 /* ------------------------------------------------------------------ */
 /* Estado inicial                                                      */
@@ -30,7 +30,8 @@ function initialRoomState(): RoomState {
 export function createInitialState(seed: number = gameConfig.seed): GameState {
   return {
     phase: 'mapa',
-    currentPosition: 0,
+    currentPosition: ENTRANCE_POSITION,
+    buffs: [],
     distanceTraveled: 0,
     cleaningMinutes: 0,
     eventMinutes: 0,
@@ -139,6 +140,62 @@ function travelTo(state: GameState, position: number): { state: GameState; meter
   };
 }
 
+/**
+ * Aplica os bônus diferidos em vigor a UMA sala trabalhada e gasta uma carga de
+ * cada um. Abate no máximo o que a sala custou — um bônus nunca devolve tempo
+ * ou material que não foi gasto ali.
+ *
+ * Vale tanto para uma situação resolvida quanto para o retorno a uma pendência:
+ * as duas são trabalho numa sala, e tratar só uma delas criaria uma exceção que
+ * o jogador não teria como adivinhar.
+ */
+function consumirBuffs(
+  state: GameState,
+  deltas: Deltas,
+): { state: GameState; abatidos: string[] } {
+  if (state.buffs.length === 0) return { state, abatidos: [] };
+
+  let cleaning = deltas.cleaning;
+  let charges = state.charges;
+  const gastasAqui = -deltas.charges;
+  let devolvidas = 0;
+  const abatidos: string[] = [];
+
+  const restantes: ActiveBuff[] = [];
+  for (const buff of state.buffs) {
+    if (buff.kind === 'tempo') {
+      const abate = Math.min(buff.amount, cleaning);
+      if (abate > 0) {
+        cleaning -= abate;
+        abatidos.push(`${buff.label}: −${formatMinutes(abate)} min`);
+      }
+    } else {
+      const abate = Math.min(buff.amount, gastasAqui - devolvidas);
+      if (abate > 0) {
+        devolvidas += abate;
+        abatidos.push(`${buff.label}: −${abate} carga${abate === 1 ? '' : 's'}`);
+      }
+    }
+    const roomsLeft = buff.roomsLeft - 1;
+    if (roomsLeft > 0) restantes.push({ ...buff, roomsLeft });
+  }
+
+  const economia = deltas.cleaning - cleaning;
+  charges = Math.min(gameConfig.maxCharges, charges + devolvidas);
+  deltas.cleaning = cleaning;
+  deltas.charges += devolvidas;
+
+  return {
+    state: {
+      ...state,
+      buffs: restantes,
+      charges,
+      cleaningMinutes: state.cleaningMinutes - economia,
+    },
+    abatidos,
+  };
+}
+
 export function confirmTravel(state: GameState): GameState {
   if (state.phase !== 'confirmacao' || !state.pendingTargetId) return state;
   const room = roomsById[state.pendingTargetId];
@@ -197,12 +254,17 @@ export function confirmTravel(state: GameState): GameState {
         [room.id]: { ...roomStateBefore, status: 'concluida', residualMinutes: 0 },
       },
     };
+    const pendDeltas: Deltas = { distance: 0, cleaning: residual, event: 0, charges: 0 };
+    const comBuffs = consumirBuffs(next, pendDeltas);
+    next = comBuffs.state;
     return appendLog({ ...next, phase: 'mapa' }, {
       roomId: room.id,
       title: `${room.shortName}: pendência resolvida`,
-      detail: `${residual} min de serviço restante, sem consumo de material`,
+      detail: comBuffs.abatidos.length
+        ? `${pendDeltas.cleaning} min de serviço restante · ${comBuffs.abatidos.join(' · ')}`
+        : `${residual} min de serviço restante, sem consumo de material`,
       deltaDistance: 0,
-      deltaCleaning: residual,
+      deltaCleaning: pendDeltas.cleaning,
       deltaEvent: 0,
       deltaIdle: 0,
       deltaCharges: 0,
@@ -212,11 +274,37 @@ export function confirmTravel(state: GameState): GameState {
   // Sala não iniciada: sorteia a situação.
   const totalNow = currentTotal(next);
   const drawn = drawSituation(next, room, roomStateBefore, totalNow);
-  const situationId = drawn?.situationId ?? 'sala-suja';
-  const situation = situationsById[situationId];
-  const needsBlockTarget = situation.actions.some((action) =>
-    action.effects.some((effect) => effect.type === 'blockRoom' && effect.target === 'nearestOther'),
+  /* Se o sorteio falhar, a reserva tem de respeitar o escopo do ambiente: um
+     id fixo furaria a regra de que cada tipo de cômodo tem seus problemas. */
+  const reserva = situations.find((candidate) =>
+    isEligible(candidate, next, room, roomStateBefore, totalNow),
   );
+  const situationId = drawn?.situationId ?? reserva?.id;
+  /**
+   * Invariante: todo tipo de ambiente tem ao menos uma situação sem
+   * pré-condição, cuja elegibilidade ainda exige uma ação executável. Chegar
+   * aqui significa que o catálogo perdeu essa cobertura para este `kind` — e o
+   * jogador já pagou o deslocamento. Falhar alto é melhor que devolvê-lo ao
+   * mapa em silêncio, cobrando uma viagem que não virou decisão nenhuma.
+   */
+  if (!situationId) {
+    throw new Error(
+      `Nenhuma situação elegível para ${room.id} (kind "${room.kind}"). ` +
+        'O catálogo precisa de ao menos uma situação sem pré-condição para cada ' +
+        'tipo de ambiente, com ao menos uma ação executável.',
+    );
+  }
+  const situation = situationsById[situationId];
+
+  const usaEfeito = (tipo: Effect['type'], extra?: (effect: Effect) => boolean) =>
+    situation.actions.some((action) =>
+      action.effects.some((effect) => effect.type === tipo && (!extra || extra(effect))),
+    );
+  const needsBlockTarget = usaEfeito(
+    'blockRoom',
+    (effect) => effect.type === 'blockRoom' && effect.target === 'nearestOther',
+  );
+  const needsUnblockTarget = usaEfeito('unblockRoom');
 
   return {
     ...next,
@@ -228,6 +316,7 @@ export function confirmTravel(state: GameState): GameState {
       situationId,
       roomId: room.id,
       blockTargetId: needsBlockTarget ? findNearestBlockable(next, room, totalNow) : null,
+      unblockTargetId: needsUnblockTarget ? findNearestBlocked(next, room, totalNow) : null,
     },
   };
 }
@@ -271,6 +360,21 @@ function applyEffect(
       deltas.charges += gameConfig.maxCharges - state.charges;
       return { ...state, charges: gameConfig.maxCharges };
     }
+    case 'gainCharges': {
+      const ganho = Math.min(effect.amount, gameConfig.maxCharges - state.charges);
+      deltas.charges += ganho;
+      return { ...state, charges: state.charges + ganho };
+    }
+    case 'grantBuff': {
+      const buff = {
+        id: `${effect.kind}-${state.log.length}`,
+        label: effect.label,
+        kind: effect.kind,
+        amount: effect.amount,
+        roomsLeft: effect.rooms,
+      };
+      return { ...state, buffs: [...state.buffs, buff] };
+    }
     case 'completeRoom':
       return {
         ...state,
@@ -303,6 +407,14 @@ function applyEffect(
       const moved = travelTo(state, targetPosition(effect.target));
       deltas.distance += moved.meters;
       return moved.state;
+    }
+    case 'unblockRoom': {
+      const targetId = ctx.unblockTargetId ?? null;
+      if (!targetId) return state;
+      return {
+        ...state,
+        rooms: { ...state.rooms, [targetId]: { ...state.rooms[targetId], blockedUntilMinute: null } },
+      };
     }
     case 'blockRoom': {
       const targetId = effect.target === 'self' ? roomId : ctx.blockTargetId;
@@ -338,16 +450,29 @@ export function chooseAction(state: GameState, actionId: string): GameState {
   if (!actionAvailability(action, ctx).available) return state;
 
   const deltas: Deltas = { distance: 0, cleaning: 0, event: 0, charges: 0 };
+  const buffsAntes = state.buffs;
   let next = state;
   for (const effect of action.effects) {
     next = applyEffect(next, effect, ctx, deltas);
   }
 
-  next = { ...next, phase: 'mapa', situation: null };
+  /* Só os bônus que já estavam em vigor valem para ESTA sala. Um bônus
+     concedido agora conta a partir da PRÓXIMA — senão "nas próximas 2 salas"
+     gastaria uma carga na sala que o concedeu. */
+  const concedidosAgora = next.buffs.slice(buffsAntes.length);
+  const comBuffs = consumirBuffs({ ...next, buffs: buffsAntes }, deltas);
+  next = {
+    ...comBuffs.state,
+    buffs: [...comBuffs.state.buffs, ...concedidosAgora],
+    phase: 'mapa',
+    situation: null,
+  };
   return appendLog(next, {
     roomId: room.id,
     title: `${room.shortName} — ${situation.title}`,
-    detail: action.label,
+    detail: comBuffs.abatidos.length
+      ? `${action.label} · ${comBuffs.abatidos.join(' · ')}`
+      : action.label,
     deltaDistance: deltas.distance,
     deltaCleaning: deltas.cleaning,
     deltaEvent: deltas.event,

@@ -19,6 +19,8 @@ export type EffectContext = {
   position: number;
   /** Alvo resolvido de um bloqueio `nearestOther`, quando existir. */
   blockTargetId: string | null;
+  /** Alvo resolvido de `unblockRoom`, quando existir. */
+  unblockTargetId?: string | null;
 };
 
 /** Tempo base efetivo: o da planta mais a sujeira acumulada por adiamentos. */
@@ -111,6 +113,16 @@ export function describeEffect(effect: Effect, ctx: EffectContext): EffectBadge 
       return { text: 'o carrinho zera', tone: 'material' };
     case 'refill':
       return { text: `reabastece até ${gameConfig.maxCharges} cargas`, tone: 'bom' };
+    case 'gainCharges':
+      return { text: `+${effect.amount} ${plural(effect.amount, 'carga', 'cargas')}`, tone: 'bom' };
+    case 'grantBuff':
+      return {
+        text:
+          effect.kind === 'tempo'
+            ? `−${effect.amount} min nas próximas ${effect.rooms} salas`
+            : `−${effect.amount} carga nas próximas ${effect.rooms} salas`,
+        tone: 'bom',
+      };
     case 'completeRoom':
       return { text: 'conclui a sala', tone: 'bom' };
     case 'leavePending': {
@@ -129,6 +141,13 @@ export function describeEffect(effect: Effect, ctx: EffectContext): EffectBadge 
         text: `desloca ${label}: +${meters} m (+${formatMinutes(travelMinutes(meters))} min)`,
         tone: 'deslocamento',
       };
+    }
+    case 'unblockRoom': {
+      /* Sem alvo, dizer "libera um ambiente" seria prometer o que não existe. */
+      const name = ctx.unblockTargetId ? roomsById[ctx.unblockTargetId]?.shortName : null;
+      return name
+        ? { text: `libera ${name} agora`, tone: 'bom' }
+        : { text: 'nada bloqueado para liberar agora', tone: 'tempo' };
     }
     case 'blockRoom': {
       if (effect.target === 'self') {
@@ -149,6 +168,11 @@ export function describeAction(action: SituationAction, ctx: EffectContext): Eff
   return action.effects
     .map((effect) => describeEffect(effect, ctx))
     .filter((badge): badge is EffectBadge => badge !== null);
+}
+
+/** Formata metros em padrão pt-BR. Posições podem ser fracionárias. */
+export function formatMeters(value: number): string {
+  return formatMinutes(value);
 }
 
 /** Formata minutos com no máximo uma casa decimal, em padrão pt-BR. */
@@ -215,6 +239,19 @@ export function summarizeAction(action: SituationAction, ctx: EffectContext): Ac
       case 'refill':
         reabastece = true;
         break;
+      case 'gainCharges':
+        cargas -= effect.amount;
+        break;
+      case 'grantBuff':
+        depois.push({
+          kind: effect.kind === 'tempo' ? 'tempo' : 'material',
+          label: effect.label,
+          value:
+            effect.kind === 'tempo'
+              ? `−${effect.amount} min por sala, nas próximas ${effect.rooms}`
+              : `−${effect.amount} carga por sala, nas próximas ${effect.rooms}`,
+        });
+        break;
       case 'completeRoom':
         conclui = true;
         break;
@@ -242,6 +279,17 @@ export function summarizeAction(action: SituationAction, ctx: EffectContext): Ac
           value: `+${effect.minutes} min na próxima visita`,
         });
         break;
+      case 'unblockRoom': {
+        const nome = ctx.unblockTargetId ? roomsById[ctx.unblockTargetId]?.shortName : null;
+        depois.push({
+          kind: 'bloqueio',
+          label: nome ? 'Rota liberada' : 'Sem efeito na rota',
+          value: nome
+            ? `${nome} volta a ficar disponível`
+            : 'nenhum ambiente está bloqueado agora',
+        });
+        break;
+      }
       case 'blockRoom': {
         const alvo =
           effect.target === 'self'
