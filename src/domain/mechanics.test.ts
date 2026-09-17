@@ -186,7 +186,7 @@ describe('bloqueio temporário', () => {
     expect(depois.log.at(-1)?.deltaIdle).toBe(10);
   });
 
-  it('o bloqueio da sala vizinha recai sobre um objetivo ainda não concluído', () => {
+  it('pedir a chave bloqueia um objetivo ainda não concluído, nunca a sala atual', () => {
     let state = createInitialState();
     const arrived = arriveAt(state, 'S5');
     state = {
@@ -194,7 +194,7 @@ describe('bloqueio temporário', () => {
       phase: 'situacao',
       situation: { situationId: 'sala-trancada', roomId: 'S5', blockTargetId: 'S11' },
     };
-    state = chooseAction(state, 'sala-vizinha');
+    state = chooseAction(state, 'pedir-chave');
     expect(state.rooms['S5'].status).toBe('concluida');
     expect(state.rooms['S11'].blockedUntilMinute).not.toBeNull();
     expect(isSelectable(state, 'S11')).toBe(false);

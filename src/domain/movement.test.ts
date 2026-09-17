@@ -35,7 +35,7 @@ function resolveInPlaceActionId(state: GameState): string {
     'material-acabando': 'economizar',
     'sala-em-uso': 'priorizar',
     'lixeiras-cheias': 'acumular',
-    'sala-trancada': 'sala-vizinha',
+    'sala-trancada': 'pedir-chave',
     'equipamento-quebrado': 'improvisar',
   };
   return map[situationId];

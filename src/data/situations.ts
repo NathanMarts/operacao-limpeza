@@ -13,6 +13,11 @@ const residual = (extra: number): TimeExpr => ({
 /**
  * Catálogo de situações (decisão Q13).
  *
+ * Restrição espacial: cada ambiente tem UMA porta, que dá para o corredor.
+ * Nenhuma ação pode supor passagem entre salas, sacada, porta dos fundos ou
+ * qualquer rota que a planta não tenha — isso quebraria a regra do jogo, que é
+ * justamente o corredor único.
+ *
  * Invariante de projeto: para todo par de ações (X, Y) de uma mesma situação,
  * X é melhor que Y em ao menos uma moeda e pior em ao menos outra. As moedas
  * são: tempo agora, material, pendência (deslocamento futuro) e bloqueio
@@ -197,7 +202,8 @@ export const situations: SituationDef[] = [
   {
     id: 'sala-trancada',
     title: 'Sala trancada',
-    prompt: 'A porta está trancada e a chave ficou na secretaria, lá na entrada do bloco.',
+    prompt:
+      'A porta está trancada. A chave principal ficou na secretaria, na entrada do bloco, e a cópia está com alguém que está usando outro ambiente.',
     conditions: [{ type: 'roomKindIsNot', kind: 'wc' }, { type: 'hasOtherBlockableObjective' }],
     actions: [
       {
@@ -212,9 +218,10 @@ export const situations: SituationDef[] = [
         ],
       },
       {
-        id: 'sala-vizinha',
-        label: 'Entrar pela sala vizinha',
-        description: 'Resolve esta sala atravessando a vizinha — e deixa a vizinha ocupada por um tempo.',
+        id: 'pedir-chave',
+        label: 'Pedir a chave pelo rádio',
+        description:
+          'Alguém interrompe o que está fazendo e traz a cópia até você. A sala que essa pessoa estava usando fica ocupada mais tempo por causa da interrupção.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },
