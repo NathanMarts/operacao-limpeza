@@ -17,6 +17,7 @@ import { previewCleaningMinutes } from '../domain/game';
 import { roomsById } from '../data/rooms';
 import { distanceBetween } from '../domain/movement';
 import { useCleaningGame } from '../hooks/useCleaningGame';
+import { Icon } from '../components/icons';
 
 export function Game() {
   const game = useCleaningGame();
@@ -71,7 +72,8 @@ export function Game() {
 
           {game.needsWait && (
             <div className="mt-4 flex flex-wrap items-center gap-4 rounded-xl border border-warn/40 bg-warn/10 px-5 py-4">
-              <p className="text-[13.5px] text-txt">
+              <Icon.bloqueada className="h-5 w-5 shrink-0 text-warn" aria-hidden />
+              <p className="flex-1 text-[13.5px] text-txt">
                 Todos os ambientes restantes estão ocupados no momento. Aguardar no corredor adianta o
                 relógio até o próximo liberar.
               </p>
@@ -97,7 +99,7 @@ export function Game() {
               onClick={actions.restart}
               className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-line bg-panel py-3 text-[14.5px] font-medium text-txt transition-colors hover:bg-btn"
             >
-              <span aria-hidden>↻</span> Reiniciar
+              <Icon.reiniciar className="h-[17px] w-[17px]" aria-hidden /> Reiniciar
             </button>
             <button
               type="button"
@@ -105,10 +107,11 @@ export function Game() {
               disabled={state.route.length === 0}
               className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-line bg-btn py-3 text-[14.5px] font-medium text-txt transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:text-txt-3 disabled:hover:bg-btn"
             >
-              <span aria-hidden>⚑</span> Finalizar limpeza
+              <Icon.finalizar className="h-[17px] w-[17px]" aria-hidden /> Finalizar limpeza
             </button>
             {game.complete && (
-              <p className="text-center text-[13px] text-ok">
+              <p className="flex items-center justify-center gap-2 text-[13px] text-ok">
+                <Icon.concluida className="h-4 w-4" aria-hidden />
                 Bloco inteiro limpo! Finalize para ver o resultado.
               </p>
             )}

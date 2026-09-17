@@ -2,6 +2,8 @@ import { formatMinutes, type ActionSummary, type Availability } from '../domain/
 import { travelMinutes } from '../domain/movement';
 import type { RoomDef, RoomState, SituationAction, SituationDef } from '../domain/types';
 import { SituationCard } from './SituationCard';
+import { Icon } from './icons';
+import type { ComponentType } from 'react';
 
 /** Miniatura da sala, igual ao card de prévia do mockup. */
 function RoomThumb({ room }: { room: RoomDef }) {
@@ -78,9 +80,9 @@ export function RoomConfirmDialog({
           </p>
 
           <div className="mt-5 w-full space-y-4 border-t border-line pt-4">
-            <Linha icon="👣" label="Deslocamento" value={`+ ${distance} m`} detail={`${formatMinutes(travelMinutes(distance))} min de caminhada`} />
+            <Linha icon={Icon.distancia} label="Deslocamento" value={`+ ${distance} m`} detail={`${formatMinutes(travelMinutes(distance))} min de caminhada`} />
             <Linha
-              icon="🕐"
+              icon={Icon.tempo}
               label={isDeposito ? 'Recarga do carrinho' : isReturn ? 'Serviço restante' : 'Tempo base de limpeza'}
               value={`${minutos} min`}
               detail={
@@ -131,21 +133,19 @@ export function RoomConfirmDialog({
 }
 
 function Linha({
-  icon,
+  icon: Glyph,
   label,
   value,
   detail,
 }: {
-  icon: string;
+  icon: ComponentType<{ className?: string }>;
   label: string;
   value: string;
   detail?: string;
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-[20px]" aria-hidden>
-        {icon}
-      </span>
+      <Glyph className="h-5 w-5 shrink-0 text-txt-2" aria-hidden />
       <div>
         <p className="text-[12.5px] leading-none text-txt-2">{label}</p>
         <p className="mt-1 text-[19px] font-bold leading-none text-txt">{value}</p>
@@ -189,8 +189,8 @@ export function SituationDialog({
             <p className="mt-3 text-center text-[13.5px] text-txt-2">Você está em</p>
             <p className="text-center text-[19px] font-bold text-txt">{room.name}</p>
             <div className="mt-5 w-full space-y-4 border-t border-line pt-4">
-              <Linha icon="👣" label="Deslocamento" value={`+ ${distance} m`} />
-              <Linha icon="🕐" label="Tempo base de limpeza" value={`${cleaningMinutes} min`} />
+              <Linha icon={Icon.distancia} label="Deslocamento" value={`+ ${distance} m`} />
+              <Linha icon={Icon.tempo} label="Tempo base de limpeza" value={`${cleaningMinutes} min`} />
             </div>
           </aside>
 

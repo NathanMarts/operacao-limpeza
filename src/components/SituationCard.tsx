@@ -1,5 +1,6 @@
 import { formatMinutes, type ActionSummary, type Availability } from '../domain/effects';
 import type { SituationAction } from '../domain/types';
+import { ConsequenceIcon, Icon } from './icons';
 
 /** Três paletas, como no mockup: vermelha, verde-água e âmbar. */
 const PALETAS = [
@@ -9,7 +10,7 @@ const PALETAS = [
     titulo: 'text-[#e88b8e]',
     selo: 'bg-[#4a2427] text-[#f0a9ab] ring-[#8b3b3f]',
     botao: 'bg-[#b25356] hover:bg-[#c25f62] text-white',
-    icone: '⚠️',
+    icone: Icon.alerta,
   },
   {
     borda: 'border-[#2c7a63]',
@@ -17,7 +18,7 @@ const PALETAS = [
     titulo: 'text-[#5fd3ae]',
     selo: 'bg-[#123a33] text-[#7fe0c0] ring-[#2c7a63]',
     botao: 'bg-[#32856c] hover:bg-[#3a9a7d] text-white',
-    icone: '📦',
+    icone: Icon.pacote,
   },
   {
     borda: 'border-[#8a6a2e]',
@@ -25,7 +26,7 @@ const PALETAS = [
     titulo: 'text-[#e6bb62]',
     selo: 'bg-[#3b3116] text-[#f0cd84] ring-[#8a6a2e]',
     botao: 'bg-[#9d7b3f] hover:bg-[#b18c48] text-white',
-    icone: '🧭',
+    icone: Icon.pessoa,
   },
 ] as const;
 
@@ -39,6 +40,7 @@ type Props = {
 
 export function SituationCard({ action, summary, availability, index, onChoose }: Props) {
   const paleta = PALETAS[index % PALETAS.length];
+  const Glyph = paleta.icone;
   const disabled = !availability.available;
 
   return (
@@ -48,9 +50,7 @@ export function SituationCard({ action, summary, availability, index, onChoose }
       }`}
     >
       <h4 className={`flex items-start gap-2.5 text-[14.5px] font-semibold leading-snug ${paleta.titulo}`}>
-        <span className="text-[17px] leading-none" aria-hidden>
-          {paleta.icone}
-        </span>
+        <Glyph className="h-[18px] w-[18px] shrink-0" aria-hidden />
         {action.label}
       </h4>
 
@@ -69,25 +69,19 @@ export function SituationCard({ action, summary, availability, index, onChoose }
           .filter((line) => line.label !== 'Tempo')
           .map((line) => (
             <li key={line.label} className="flex items-center gap-2 text-[12.5px] text-txt-2">
-              <span className="w-4 shrink-0 text-center" aria-hidden>
-                {line.icon}
-              </span>
+              <ConsequenceIcon kind={line.kind} className="h-[15px] w-[15px] shrink-0" />
               {line.value}
             </li>
           ))}
         {summary.depois.map((line) => (
           <li key={line.label} className="flex gap-2 text-[12.5px] text-warn">
-            <span className="w-4 shrink-0 text-center" aria-hidden>
-              {line.icon}
-            </span>
+            <ConsequenceIcon kind={line.kind} className="mt-px h-[15px] w-[15px] shrink-0" />
             <span>{line.value}</span>
           </li>
         ))}
         {summary.depois.length === 0 && (
           <li className="flex items-center gap-2 text-[12.5px] text-ok">
-            <span className="w-4 shrink-0 text-center" aria-hidden>
-              ✓
-            </span>
+            <Icon.concluida className="h-[15px] w-[15px] shrink-0" aria-hidden />
             Conclui a sala, sem pendência
           </li>
         )}

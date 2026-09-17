@@ -163,7 +163,17 @@ export function formatMinutes(value: number): string {
 /* Resumo agrupado por categoria — usado pelas cartas de decisão        */
 /* ------------------------------------------------------------------ */
 
-export type ConsequenceLine = { icon: string; label: string; value: string };
+/** Categoria da consequência. Escolher o ícone é papel da camada visual. */
+export type ConsequenceKind =
+  | 'tempo'
+  | 'deslocamento'
+  | 'material'
+  | 'pendencia'
+  | 'intocada'
+  | 'sujeira'
+  | 'bloqueio';
+
+export type ConsequenceLine = { kind: ConsequenceKind; label: string; value: string };
 
 export type ActionSummary = {
   /** O que a escolha cobra imediatamente. */
@@ -213,21 +223,21 @@ export function summarizeAction(action: SituationAction, ctx: EffectContext): Ac
         break;
       case 'leavePending':
         depois.push({
-          icon: '◐',
+          kind: 'pendencia',
           label: 'Pendência',
           value: `${evalTime(effect.residual, ctx)} min quando voltar aqui`,
         });
         break;
       case 'leaveUnstarted':
         depois.push({
-          icon: '◌',
+          kind: 'intocada',
           label: 'Sala intocada',
           value: `${evalTime({ kind: 'base' }, ctx)} min inteiros ainda por fazer`,
         });
         break;
       case 'addDirt':
         depois.push({
-          icon: '▲',
+          kind: 'sujeira',
           label: 'Sujeira acumula',
           value: `+${effect.minutes} min na próxima visita`,
         });
@@ -240,7 +250,7 @@ export function summarizeAction(action: SituationAction, ctx: EffectContext): Ac
               ? roomsById[ctx.blockTargetId]?.shortName ?? 'Outro ambiente'
               : 'Outro ambiente';
         depois.push({
-          icon: '🔒',
+          kind: 'bloqueio',
           label: 'Bloqueio',
           value: `${alvo} indisponível por ${effect.minutes} min`,
         });
@@ -251,27 +261,27 @@ export function summarizeAction(action: SituationAction, ctx: EffectContext): Ac
 
   const agora: ConsequenceLine[] = [];
   if (minutos > 0) {
-    agora.push({ icon: '⏱', label: 'Tempo', value: `+${formatMinutes(minutos)} min` });
+    agora.push({ kind: 'tempo', label: 'Tempo', value: `+${formatMinutes(minutos)} min` });
   }
   if (metros > 0) {
     agora.push({
-      icon: '📍',
+      kind: 'deslocamento',
       label: 'Deslocamento',
       value: `+${metros} m · ${formatMinutes(travelMinutes(metros))} min`,
     });
   }
   if (reabastece) {
-    agora.push({ icon: '🧽', label: 'Material', value: `reabastece até ${gameConfig.maxCharges}` });
+    agora.push({ kind: 'material', label: 'Material', value: `reabastece até ${gameConfig.maxCharges}` });
   } else if (zeraCarrinho) {
-    agora.push({ icon: '🧽', label: 'Material', value: 'zera o carrinho' });
+    agora.push({ kind: 'material', label: 'Material', value: 'zera o carrinho' });
   } else if (cargas > 0) {
     agora.push({
-      icon: '🧽',
+      kind: 'material',
       label: 'Material',
       value: `−${cargas} ${cargas === 1 ? 'carga' : 'cargas'}`,
     });
   } else {
-    agora.push({ icon: '🧽', label: 'Material', value: 'não gasta nada' });
+    agora.push({ kind: 'material', label: 'Material', value: 'não gasta nada' });
   }
 
   return {

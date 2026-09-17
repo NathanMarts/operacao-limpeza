@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
+import { Icon } from './icons';
 import { formatMinutes } from '../domain/effects';
 import { gameConfig } from '../data/gameConfig';
 import { objectives } from '../data/rooms';
@@ -7,13 +8,21 @@ import type { Summary } from '../domain/game';
 
 /* ------------------------------------------------------------------ */
 
-export function Card({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
+export function Card({
+  title,
+  icon: Glyph,
+  tone = 'text-accent',
+  children,
+}: {
+  title: string;
+  icon: ComponentType<{ className?: string }>;
+  tone?: string;
+  children: ReactNode;
+}) {
   return (
     <section className="rounded-xl border border-line bg-panel p-4">
       <h2 className="flex items-center gap-2.5 text-[15px] font-semibold text-txt">
-        <span className="text-[17px] leading-none" aria-hidden>
-          {icon}
-        </span>
+        <Glyph className={`h-[18px] w-[18px] shrink-0 ${tone}`} />
         {title}
       </h2>
       <div className="mt-3">{children}</div>
@@ -41,8 +50,8 @@ export function GameHeader({
   return (
     <header className="flex flex-wrap items-center gap-4 bg-header px-5 py-3.5 sm:px-6">
       <div className="flex items-center gap-3.5">
-        <span className="text-[30px] leading-none" aria-hidden>
-          🧹
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-soft">
+          <Icon.marca className="h-6 w-6 text-accent" aria-hidden />
         </span>
         <div>
           <h1 className="text-[26px] font-bold leading-none tracking-tight text-txt">Operação Limpeza</h1>
@@ -51,19 +60,19 @@ export function GameHeader({
       </div>
 
       <nav className="order-3 flex w-full gap-1 rounded-xl border border-line bg-panel-2 p-1.5 md:order-none md:mx-auto md:w-auto">
-        <Aba active={tab === 'mapa'} onClick={() => onTab('mapa')} icon="🗺️">
+        <Aba active={tab === 'mapa'} onClick={() => onTab('mapa')} icon={Icon.mapa}>
           Mapa
         </Aba>
-        <Aba active={tab === 'instrucoes'} onClick={() => onTab('instrucoes')} icon="🧭">
+        <Aba active={tab === 'instrucoes'} onClick={() => onTab('instrucoes')} icon={Icon.instrucoes}>
           Instruções
         </Aba>
       </nav>
 
       <div className="ml-auto flex flex-wrap gap-3">
-        <MetricCard icon="⏱️" label="Tempo total" value={`${formatMinutes(totalMinutes)} min`} />
-        <MetricCard icon="👣" label="Distância percorrida" value={`${distance} m`} />
+        <MetricCard icon={Icon.tempo} label="Tempo total" value={`${formatMinutes(totalMinutes)} min`} />
+        <MetricCard icon={Icon.distancia} label="Distância percorrida" value={`${distance} m`} />
         <MetricCard
-          icon="🧽"
+          icon={Icon.material}
           label="Material"
           value={`${charges}/${gameConfig.maxCharges}`}
           alert={charges === 0}
@@ -76,12 +85,12 @@ export function GameHeader({
 function Aba({
   active,
   onClick,
-  icon,
+  icon: Glyph,
   children,
 }: {
   active: boolean;
   onClick: () => void;
-  icon: string;
+  icon: ComponentType<{ className?: string }>;
   children: ReactNode;
 }) {
   return (
@@ -93,19 +102,19 @@ function Aba({
         active ? 'bg-accent-soft text-txt' : 'text-txt-2 hover:text-txt'
       }`}
     >
-      <span aria-hidden>{icon}</span>
+      <Glyph className="h-[17px] w-[17px]" aria-hidden />
       {children}
     </button>
   );
 }
 
 function MetricCard({
-  icon,
+  icon: Glyph,
   label,
   value,
   alert,
 }: {
-  icon: string;
+  icon: ComponentType<{ className?: string }>;
   label: string;
   value: string;
   alert?: boolean;
@@ -116,9 +125,7 @@ function MetricCard({
         alert ? 'border-warn/50 bg-warn/10' : 'border-line bg-panel'
       }`}
     >
-      <span className="text-[20px]" aria-hidden>
-        {icon}
-      </span>
+      <Glyph className={`h-8 w-8 shrink-0 ${alert ? 'text-warn' : 'text-txt-2'}`} aria-hidden />
       <div>
         <p className="text-[12px] leading-none text-txt-2">{label}</p>
         <p className={`mt-1 text-[21px] font-bold leading-none ${alert ? 'text-warn' : 'text-txt'}`}>
@@ -135,7 +142,7 @@ function MetricCard({
 
 export function ObjectivePanel() {
   return (
-    <Card title="Objetivo" icon="🎯">
+    <Card title="Objetivo" icon={Icon.objetivo} tone="text-warn">
       <p className="text-[13.5px] leading-relaxed text-txt-2">
         Limpar todas as salas do bloco no menor tempo possível, considerando deslocamento, tempo de
         limpeza e os eventos de cada sala.
@@ -156,7 +163,7 @@ const LEGENDA: [string, string][] = [
 
 export function Legend() {
   return (
-    <Card title="Legenda" icon="📐">
+    <Card title="Legenda" icon={Icon.legenda}>
       <ul className="space-y-2">
         {LEGENDA.map(([color, label]) => (
           <li key={label} className="flex items-center gap-3 text-[13.5px] text-txt-2">
@@ -167,34 +174,34 @@ export function Legend() {
       </ul>
       <ul className="mt-3 space-y-1.5 border-t border-line pt-3 text-[12.5px] text-txt-3">
         <li className="flex items-center gap-2">
-          <Selo cor="#34d399">✓</Selo> concluída
+          <Selo cor="#34d399" icon={Icon.concluida} /> concluída
         </li>
         <li className="flex items-center gap-2">
-          <Selo cor="#f0b429">◐</Selo> pendente, exige retorno
+          <Selo cor="#f0b429" icon={Icon.pendente} /> pendente, exige retorno
         </li>
         <li className="flex items-center gap-2">
-          <Selo cor="#5b6472">🔒</Selo> bloqueada por enquanto
+          <Selo cor="#5b6472" icon={Icon.bloqueada} /> bloqueada por enquanto
         </li>
       </ul>
     </Card>
   );
 }
 
-function Selo({ cor, children }: { cor: string; children: ReactNode }) {
+function Selo({ cor, icon: Glyph }: { cor: string; icon: ComponentType<{ className?: string }> }) {
   return (
     <span
-      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] text-[#0b1822]"
+      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
       style={{ background: cor }}
       aria-hidden
     >
-      {children}
+      <Glyph className="h-2.5 w-2.5 text-[#0b1822]" />
     </span>
   );
 }
 
 export function TipPanel() {
   return (
-    <Card title="Dica" icon="💡">
+    <Card title="Dica" icon={Icon.dica} tone="text-warn">
       <p className="text-[13.5px] leading-relaxed text-txt-2">
         A ordem das salas, os eventos e o deslocamento fazem toda a diferença. Pense na sua
         estratégia!
@@ -230,7 +237,7 @@ export function SequencePanel({ state }: { state: GameState }) {
   const atual = state.route.length;
 
   return (
-    <Card title="Sua sequência" icon="🧭">
+    <Card title="Sua sequência" icon={Icon.sequencia}>
       <ol className="space-y-1.5">
         {linhas.map((step, index) => {
           const ativo = index === atual - 1;
@@ -287,7 +294,7 @@ export function SummaryPanel({ summary }: { summary: Summary }) {
   }
 
   return (
-    <Card title="Resumo atual" icon="📊">
+    <Card title="Resumo atual" icon={Icon.resumo}>
       <dl className="space-y-2.5">
         {linhas.map(([label, value]) => (
           <div key={label} className="flex items-baseline justify-between gap-3">
@@ -298,9 +305,7 @@ export function SummaryPanel({ summary }: { summary: Summary }) {
       </dl>
 
       <div className="mt-4 flex items-center gap-3 rounded-lg bg-total-box px-4 py-3">
-        <span className="text-[20px]" aria-hidden>
-          🕐
-        </span>
+        <Icon.tempo className="h-6 w-6 shrink-0 text-accent" aria-hidden />
         <div>
           <p className="text-[12.5px] leading-none text-txt-2">Tempo total atual</p>
           <p className="mt-1 text-[22px] font-bold leading-none text-txt">

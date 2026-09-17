@@ -4,6 +4,8 @@ import type { Summary } from '../domain/game';
 import type { GameState } from '../domain/types';
 import { compareRuns, type HistoryEntry } from '../domain/history';
 import { ShiftBar } from './Panels';
+import { Icon } from './icons';
+import type { ComponentType } from 'react';
 
 type Props = {
   state: GameState;
@@ -30,10 +32,10 @@ export function FinalResult({ state, summary, history, onRestart, onClearHistory
         </header>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Metric icon="🕐" label="Tempo total" value={`${formatMinutes(summary.totalMinutes)} min`} destaque />
-          <Metric icon="👣" label="Distância total" value={`${summary.distanceTraveled} m`} />
-          <Metric icon="🧹" label="Tempo de limpeza" value={`${formatMinutes(summary.cleaningMinutes)} min`} />
-          <Metric icon="⚖️" label="Tempo de decisões" value={`${formatMinutes(summary.eventMinutes)} min`} />
+          <Metric icon={Icon.tempo} label="Tempo total" value={`${formatMinutes(summary.totalMinutes)} min`} destaque />
+          <Metric icon={Icon.distancia} label="Distância total" value={`${summary.distanceTraveled} m`} />
+          <Metric icon={Icon.limpeza} label="Tempo de limpeza" value={`${formatMinutes(summary.cleaningMinutes)} min`} />
+          <Metric icon={Icon.decisoes} label="Tempo de decisões" value={`${formatMinutes(summary.eventMinutes)} min`} />
         </div>
 
         <div className="mt-4 rounded-xl border border-line bg-panel p-4">
@@ -55,9 +57,9 @@ export function FinalResult({ state, summary, history, onRestart, onClearHistory
         <section className="mt-6">
           <h3 className="text-[15px] font-semibold text-txt">Como ficou cada ambiente</h3>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <Grupo cor="#34d399" glifo="✓" title="Concluídos" rooms={summary.concluidas.map((r) => r.name)} />
-            <Grupo cor="#f0b429" glifo="◐" title="Com pendência" rooms={summary.pendentes.map((r) => r.name)} />
-            <Grupo cor="#5b6472" glifo="◌" title="Não iniciados" rooms={summary.naoIniciadas.map((r) => r.name)} />
+            <Grupo cor="#34d399" icon={Icon.concluida} title="Concluídos" rooms={summary.concluidas.map((r) => r.name)} />
+            <Grupo cor="#f0b429" icon={Icon.pendente} title="Com pendência" rooms={summary.pendentes.map((r) => r.name)} />
+            <Grupo cor="#5b6472" icon={Icon.naoIniciada} title="Não iniciados" rooms={summary.naoIniciadas.map((r) => r.name)} />
           </div>
         </section>
 
@@ -153,12 +155,12 @@ export function FinalResult({ state, summary, history, onRestart, onClearHistory
 }
 
 function Metric({
-  icon,
+  icon: Glyph,
   label,
   value,
   destaque,
 }: {
-  icon: string;
+  icon: ComponentType<{ className?: string }>;
   label: string;
   value: string;
   destaque?: boolean;
@@ -169,9 +171,7 @@ function Metric({
         destaque ? 'border-accent/40 bg-total-box' : 'border-line bg-panel'
       }`}
     >
-      <span className="text-[20px]" aria-hidden>
-        {icon}
-      </span>
+      <Glyph className={`h-5 w-5 shrink-0 ${destaque ? 'text-accent' : 'text-txt-2'}`} aria-hidden />
       <div>
         <p className="text-[12px] leading-none text-txt-2">{label}</p>
         <p className="mt-1 text-[21px] font-bold leading-none tabular-nums text-txt">{value}</p>
@@ -182,12 +182,12 @@ function Metric({
 
 function Grupo({
   cor,
-  glifo,
+  icon: Glyph,
   title,
   rooms,
 }: {
   cor: string;
-  glifo: string;
+  icon: ComponentType<{ className?: string }>;
   title: string;
   rooms: string[];
 }) {
@@ -195,11 +195,11 @@ function Grupo({
     <div className="rounded-xl border border-line bg-panel p-4">
       <p className="flex items-center gap-2 text-[13.5px] font-semibold text-txt">
         <span
-          className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-[#0b1822]"
+          className="flex h-5 w-5 items-center justify-center rounded-full"
           style={{ background: cor }}
           aria-hidden
         >
-          {glifo}
+          <Glyph className="h-3 w-3 text-[#0b1822]" />
         </span>
         {title}
         <span className="text-txt-3">({rooms.length})</span>
