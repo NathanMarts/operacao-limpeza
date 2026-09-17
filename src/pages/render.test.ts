@@ -6,7 +6,7 @@ import { FinalResult } from '../components/FinalResult';
 import { SituationDialog } from '../components/Dialogs';
 import { situationsById } from '../data/situations';
 import { objectives, roomsById } from '../data/rooms';
-import { actionAvailability, describeAction, type EffectContext } from '../domain/effects';
+import { actionAvailability, summarizeAction, type EffectContext } from '../domain/effects';
 import {
   chooseAction,
   confirmTravel,
@@ -102,7 +102,9 @@ describe('renderização dos componentes', () => {
     }
     // A planta desenhada, não uma imagem clicável.
     expect(html).not.toContain('<image');
-    expect(html).toContain('ENTRADA (0 m)');
+    // Marco zero e regua metrica do corredor.
+    expect(html).toContain('ENTRADA');
+    expect(html).toContain('60 m');
   });
 
   it('o modal de situação mostra as três cartas com seus efeitos', () => {
@@ -122,7 +124,7 @@ describe('renderização dos componentes', () => {
         room,
         cards: situation.actions.map((action) => ({
           action,
-          badges: describeAction(action, ctx),
+          summary: summarizeAction(action, ctx),
           availability: actionAvailability(action, ctx),
         })),
         onChoose: () => {},
@@ -148,7 +150,8 @@ describe('renderização dos componentes', () => {
     );
     expect(html).toContain('Decomposição da partida');
     expect(html).toContain('Referência espacial mínima');
-    expect(html).toContain(`${summary.distanceTraveled} m`);
+    expect(html).toContain(String(summary.distanceTraveled));
+    expect(html).toContain(String(summary.minimumSweepMeters));
     // Cada passo do log aparece na tabela.
     expect(html).toContain(played.log[0].title);
     expect(html).toContain(played.log.at(-1)!.title);

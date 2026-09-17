@@ -1,5 +1,38 @@
 @import "tailwindcss";
 
+/*
+  Operação Limpeza — sistema visual.
+
+  Metáfora: a tela é uma prancheta de arquitetura à noite. O mapa é o desenho
+  técnico; a interface em volta são os instrumentos. Por isso: linhas de cabelo
+  em latão, medidas sempre em monoespaçada, hachura para estados incompletos.
+
+  Regra de cor: COR SIGNIFICA ESTADO, não tipo de sala. O tipo de ambiente
+  aparece como um tom discreto de fundo; concluída/pendente/bloqueada/destino
+  são o que ganha saturação.
+*/
+@theme {
+  --color-bg: #080b11;
+  --color-surface: #0f151e;
+  --color-surface-2: #151d29;
+  --color-surface-3: #1c2634;
+  --color-hairline: #223046;
+  --color-brass: #c9a227;
+  --color-brass-dim: #6d5a1a;
+
+  --color-ink-hi: #e9eff7;
+  --color-ink-mid: #93a3b8;
+  --color-ink-low: #5d6d82;
+
+  --color-player: #5ea9ff;
+  --color-done: #34d399;
+  --color-pending: #f59e0b;
+  --color-blocked: #6b7a8f;
+
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", monospace;
+}
+
 :root {
   color-scheme: dark;
 }
@@ -12,6 +45,77 @@ body,
 
 body {
   margin: 0;
-  background: #020617;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-ink-hi);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Textura de prancheta: grade técnica quase imperceptível sob todo o conteúdo. */
+#root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(to right, rgba(34, 48, 70, 0.22) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(34, 48, 70, 0.22) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
+}
+
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-brass);
+}
+
+@utility data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Régua de latão: divisor com peso de instrumento, não de borda de card. */
+@utility rule-brass {
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--color-brass) 40%, transparent),
+    transparent 70%
+  );
+  height: 1px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-player);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes pulse-destino {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.destino-pulse {
+  animation: pulse-destino 1.8s ease-in-out infinite;
 }

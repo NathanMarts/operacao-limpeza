@@ -19,7 +19,7 @@ import {
 import { distanceBetween } from '../domain/movement';
 import { roomsById } from '../data/rooms';
 import { situationsById } from '../data/situations';
-import { actionAvailability, describeAction, type EffectContext } from '../domain/effects';
+import { actionAvailability, summarizeAction, type EffectContext } from '../domain/effects';
 import { bestRun, clearHistory, loadHistory, saveRun, type HistoryEntry } from '../domain/history';
 import type { GameState } from '../domain/types';
 
@@ -100,7 +100,7 @@ export function useCleaningGame() {
       room,
       cards: situation.actions.map((action) => ({
         action,
-        badges: describeAction(action, ctx),
+        summary: summarizeAction(action, ctx),
         availability: actionAvailability(action, ctx),
       })),
     };

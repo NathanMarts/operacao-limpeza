@@ -158,3 +158,126 @@ export function formatMinutes(value: number): string {
     ? String(rounded)
     : rounded.toFixed(1).replace('.', ',');
 }
+
+/* ------------------------------------------------------------------ */
+/* Resumo agrupado por categoria — usado pelas cartas de decisão        */
+/* ------------------------------------------------------------------ */
+
+export type ConsequenceLine = { icon: string; label: string; value: string };
+
+export type ActionSummary = {
+  /** O que a escolha cobra imediatamente. */
+  agora: ConsequenceLine[];
+  /** O que a escolha deixa para o futuro — onde mora o trade-off. */
+  depois: ConsequenceLine[];
+  /** A sala fica fechada com esta ação? */
+  conclui: boolean;
+  /** Custo imediato somado, em minutos, para o selo da carta. */
+  minutosAgora: number;
+};
+
+/**
+ * Agrupa os efeitos em quatro categorias legíveis (tempo, deslocamento,
+ * material, consequência futura) e separa AGORA de DEPOIS. É essa separação
+ * que torna o trade-off visível de relance, em vez de virar contagem de selos.
+ */
+export function summarizeAction(action: SituationAction, ctx: EffectContext): ActionSummary {
+  let minutos = 0;
+  let metros = 0;
+  let cargas = 0;
+  let zeraCarrinho = false;
+  let reabastece = false;
+  let conclui = false;
+  const depois: ConsequenceLine[] = [];
+
+  for (const effect of action.effects) {
+    switch (effect.type) {
+      case 'cleanTime':
+      case 'eventTime':
+        minutos += evalTime(effect.amount, ctx);
+        break;
+      case 'spendCharges':
+        cargas += evalCharges(effect.amount, ctx);
+        break;
+      case 'setCharges':
+        zeraCarrinho = true;
+        break;
+      case 'refill':
+        reabastece = true;
+        break;
+      case 'completeRoom':
+        conclui = true;
+        break;
+      case 'moveTo':
+        metros += distanceBetween(ctx.position, targetPosition(effect.target));
+        break;
+      case 'leavePending':
+        depois.push({
+          icon: '◐',
+          label: 'Pendência',
+          value: `${evalTime(effect.residual, ctx)} min quando voltar aqui`,
+        });
+        break;
+      case 'leaveUnstarted':
+        depois.push({
+          icon: '◌',
+          label: 'Sala intocada',
+          value: `${evalTime({ kind: 'base' }, ctx)} min inteiros ainda por fazer`,
+        });
+        break;
+      case 'addDirt':
+        depois.push({
+          icon: '▲',
+          label: 'Sujeira acumula',
+          value: `+${effect.minutes} min na próxima visita`,
+        });
+        break;
+      case 'blockRoom': {
+        const alvo =
+          effect.target === 'self'
+            ? 'Esta sala'
+            : ctx.blockTargetId
+              ? roomsById[ctx.blockTargetId]?.shortName ?? 'Outro ambiente'
+              : 'Outro ambiente';
+        depois.push({
+          icon: '🔒',
+          label: 'Bloqueio',
+          value: `${alvo} indisponível por ${effect.minutes} min`,
+        });
+        break;
+      }
+    }
+  }
+
+  const agora: ConsequenceLine[] = [];
+  if (minutos > 0) {
+    agora.push({ icon: '⏱', label: 'Tempo', value: `+${formatMinutes(minutos)} min` });
+  }
+  if (metros > 0) {
+    agora.push({
+      icon: '📍',
+      label: 'Deslocamento',
+      value: `+${metros} m · ${formatMinutes(travelMinutes(metros))} min`,
+    });
+  }
+  if (reabastece) {
+    agora.push({ icon: '🧽', label: 'Material', value: `reabastece até ${gameConfig.maxCharges}` });
+  } else if (zeraCarrinho) {
+    agora.push({ icon: '🧽', label: 'Material', value: 'zera o carrinho' });
+  } else if (cargas > 0) {
+    agora.push({
+      icon: '🧽',
+      label: 'Material',
+      value: `−${cargas} ${cargas === 1 ? 'carga' : 'cargas'}`,
+    });
+  } else {
+    agora.push({ icon: '🧽', label: 'Material', value: 'não gasta nada' });
+  }
+
+  return {
+    agora,
+    depois,
+    conclui,
+    minutosAgora: minutos + travelMinutes(metros),
+  };
+}

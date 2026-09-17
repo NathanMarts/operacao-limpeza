@@ -16,12 +16,12 @@ export const rooms: RoomDef[] = [
   {
     id: 'S1', name: 'Sala 1', shortName: 'S1', kind: 'sala', side: 'top', tone: 'tecnica',
     corridorPosition: 5, baseCleaningMinutes: 5, materialCost: 1, cleanable: true,
-    spanStartMeters: 0, spanWidthMeters: 10, depth: 1.4,
+    spanStartMeters: 0, spanWidthMeters: 10, depth: 1.3,
   },
   {
     id: 'S2', name: 'Sala 2', shortName: 'S2', kind: 'sala', side: 'top', tone: 'grande',
     corridorPosition: 15, baseCleaningMinutes: 8, materialCost: 1, cleanable: true,
-    spanStartMeters: 10, spanWidthMeters: 12, depth: 1.4,
+    spanStartMeters: 10, spanWidthMeters: 12, depth: 1.3,
   },
   {
     id: 'S3', name: 'Sala 3', shortName: 'S3', kind: 'sala', side: 'top', tone: 'estreita',
@@ -58,12 +58,12 @@ export const rooms: RoomDef[] = [
   {
     id: 'S7', name: 'Sala 7', shortName: 'S7', kind: 'sala', side: 'bottom', tone: 'tecnica',
     corridorPosition: 5, baseCleaningMinutes: 5, materialCost: 1, cleanable: true,
-    spanStartMeters: 0, spanWidthMeters: 10, depth: 1.4,
+    spanStartMeters: 0, spanWidthMeters: 10, depth: 1.3,
   },
   {
     id: 'S8', name: 'Sala 8', shortName: 'S8', kind: 'sala', side: 'bottom', tone: 'grande',
     corridorPosition: 15, baseCleaningMinutes: 8, materialCost: 1, cleanable: true,
-    spanStartMeters: 10, spanWidthMeters: 12, depth: 1.4,
+    spanStartMeters: 10, spanWidthMeters: 12, depth: 1.3,
   },
   {
     id: 'S9', name: 'Sala 9', shortName: 'S9', kind: 'sala', side: 'bottom', tone: 'estreita',
