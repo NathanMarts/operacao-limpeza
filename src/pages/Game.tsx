@@ -143,6 +143,24 @@ export function Game() {
                   {expandido ? 'Recolher' : 'Expandir'}
                 </button>
               </div>
+
+              {/*
+                Com o mapa expandido a coluna da direita sai de cena e levaria
+                as vantagens em vigor com ela — justamente o dado que explica
+                por que uma limpeza não cobrou carga. O abatimento só existe no
+                log, e o log só aparece na tela final, então sem isto o bônus
+                fica invisível durante a partida inteira.
+
+                Sobreposto, não no fluxo: em cima do mapa ele empurrava o
+                desenho para baixo a cada vantagem ganha. Aqui mora na mesma
+                faixa de cima que já é dos controles, e o desenho não se move.
+              */}
+              {expandido && state.buffs.length > 0 && (
+                <div className="absolute left-4 top-4 z-10 w-[250px]">
+                  <BuffPanel buffs={state.buffs} />
+                </div>
+              )}
+
               <BuildingMap
                 state={state}
                 totalMinutes={game.totalMinutes}
