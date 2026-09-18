@@ -42,11 +42,43 @@
   --color-warn-ink: #2b1f02;
   --color-danger: #d4696c;
 
+
+  /* Caixa do motivo de uma carta indisponível: véu sobre o fundo da carta. */
+  --color-carta-nota: #00000040;
+  --color-accent-hover: #6189f5;
+
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 :root {
   color-scheme: dark;
+
+  /*
+    Gramática das cartas de decisão: uma cor por TIPO DE ESTRATÉGIA, não por
+    escolha boa ou ruim. Fora do @theme de propósito — o Tailwind só emite os
+    tokens que viram utilitário, e estes são lidos por var() no atributo style.
+
+    Cada estratégia tem dois valores: o acento (ícone, borda, selo, título) e
+    um tom mais fundo para o preenchimento do botão, onde o texto é branco e
+    precisa de 4.5:1. O acento puro não alcança isso em âmbar, ciano e verde.
+  */
+  --color-estrat-imediata: #3b82f6;
+  --color-estrat-concluir: #10b981;
+  --color-estrat-economia: #f59e0b;
+  --color-estrat-futuro: #8b5cf6;
+  --color-estrat-desvio: #f97316;
+  --color-estrat-bloqueio: #ef4444;
+  --color-estrat-cooperacao: #06b6d4;
+  --color-estrat-adiar: #64748b;
+
+  --color-estrat-imediata-btn: #2563eb;
+  --color-estrat-concluir-btn: #047857;
+  --color-estrat-economia-btn: #b45309;
+  --color-estrat-futuro-btn: #6d28d9;
+  --color-estrat-desvio-btn: #c2410c;
+  --color-estrat-bloqueio-btn: #b91c1c;
+  --color-estrat-cooperacao-btn: #0e7490;
+  --color-estrat-adiar-btn: #475569;
 }
 
 /*
@@ -81,6 +113,21 @@
   --color-warn: #b8770a;
   --color-warn-ink: #ffffff;
   --color-danger: #c0393d;
+
+
+  --color-carta-nota: #0000000d;
+  --color-accent-hover: #244cb8;
+
+  /* No claro o acento vira o próprio tom do botão: o hex cheio não tem
+     contraste contra o cartão branco. Os -btn não mudam. */
+  --color-estrat-imediata: #2563eb;
+  --color-estrat-concluir: #047857;
+  --color-estrat-economia: #b45309;
+  --color-estrat-futuro: #6d28d9;
+  --color-estrat-desvio: #c2410c;
+  --color-estrat-bloqueio: #b91c1c;
+  --color-estrat-cooperacao: #0e7490;
+  --color-estrat-adiar: #475569;
 }
 
 html,
@@ -228,4 +275,348 @@ body {
 /* O contorno de foco do navegador não acompanha a forma da sala. */
 .mapa-alvo:focus-visible {
   outline: none;
+}
+
+/* ==================================================================
+   MOVIMENTO
+   Cinco faixas de duração e duas curvas. Nada de overshoot, bounce ou
+   elastic: o objeto chega e para. A regra de prefers-reduced-motion mais
+   acima zera tudo isto automaticamente — o que faz as animações de
+   entrada saltarem para o quadro final, e as flutuantes desaparecerem.
+   Nenhuma informação depende só de animação.
+   ================================================================== */
+:root {
+  --ease-snap: cubic-bezier(0.2, 0.8, 0.3, 1);
+  --ease-move: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Lidos também pelo JavaScript, em src/hooks/useMotion.ts: pino, count-up,
+     atraso da caminhada e escalonamento das cartas saem daqui, para nunca
+     dessincronizarem do CSS. */
+  --dur-count: 600ms;
+  --dur-escolha: 240ms;
+  /* Entrada do modal. As cartas esperam este tempo antes de virar, então
+     mudá-lo aqui reescala a sequência inteira sozinho. */
+  --dur-cena: 300ms;
+  --dur-saida: 180ms;
+  --dur-micro: 180ms;
+  --dur-state: 340ms;
+  --dur-move: 520ms;
+  --dur-float: 1300ms;
+  /* Inclinação 3D das cartas: acompanha o cursor, então o tempo é curto —
+     o suficiente para tirar o serrilhado do movimento, sem arrastar atrás
+     do ponteiro. O retorno ao repouso é mais longo, aí sim se vê o gesto. */
+  --dur-tilt: 90ms;
+  --dur-tilt-volta: 420ms;
+  /* Graus no canto da carta. Acima de ~8 a leitura do texto começa a sofrer. */
+  --tilt-max: 7;
+  --tilt-perspectiva: 900px;
+  /* Virada da carta. Longo o bastante para o gesto ser lido como uma carta
+     sendo virada na mesa, curto o bastante para não atrasar a decisão. */
+  --dur-flip: 620ms;
+  --flip-perspectiva: 1200px;
+}
+
+/* Estado do ambiente: o preenchimento perde saturação e a parede muda de
+   cor/espessura quando a limpeza conclui, fica pendente ou bloqueia. */
+.mapa-sala-fundo {
+  transition: fill-opacity var(--dur-state) var(--ease-snap);
+}
+
+.mapa-alvo-parede {
+  transition:
+    stroke var(--dur-state) var(--ease-snap),
+    stroke-width var(--dur-state) var(--ease-snap);
+}
+
+/* Hachuras de pendência e bloqueio entram junto com o estado. */
+@keyframes mapa-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.mapa-fade {
+  animation: mapa-fade var(--dur-state) var(--ease-snap) both;
+}
+
+/* Selo de estado (check, ampulheta, cadeado): escala curta, sem passar de 1. */
+@keyframes mapa-selo {
+  from { opacity: 0; transform: scale(0.55); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.mapa-selo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mapa-selo var(--dur-state) var(--ease-snap) both;
+}
+
+/* Trecho percorrido: a linha se desenha no mesmo tempo da caminhada. */
+@keyframes trilha-desenha {
+  from { stroke-dashoffset: var(--trilha-len); }
+  to   { stroke-dashoffset: 0; }
+}
+
+.trilha-desenha {
+  animation: trilha-desenha var(--dur-move) var(--ease-move) both;
+}
+
+/* Consequência da decisão: sobe um pouco e desvanece, ancorada no ambiente. */
+@keyframes delta-sobe {
+  0%   { opacity: 0; transform: translateY(6px); }
+  22%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-14px); }
+}
+
+.delta-sobe {
+  animation: delta-sobe var(--dur-float) var(--ease-snap) both;
+}
+
+/* Depósito com material baixo: anel lento, discreto, sem piscar. É o único
+   laço contínuo permitido na tela, e para quando o carrinho reabastece. */
+@keyframes dep-anel {
+  0%   { opacity: 0.45; transform: scale(0.94); }
+  70%  { opacity: 0;    transform: scale(1.35); }
+  100% { opacity: 0;    transform: scale(1.35); }
+}
+
+.dep-anel {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dep-anel 2400ms ease-in-out infinite;
+}
+
+/* Prévia da rota no hover: pontilhado discreto entre o pino e o destino. */
+@keyframes previa-entra {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.previa-rota {
+  animation: previa-entra var(--dur-micro) var(--ease-snap) both;
+}
+
+/* Cena da situação: chegada ao ambiente, não abertura de pop-up. */
+@keyframes cena-entra {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.cena-entra {
+  animation: cena-entra var(--dur-cena) var(--ease-snap) both;
+}
+
+@keyframes cena-fundo {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.cena-fundo {
+  animation: cena-fundo 260ms linear both;
+}
+
+/* Cartas: sobem juntas, com atraso curto. Só opacidade e eixo vertical —
+   nada que mude largura, posição horizontal ou ordem, senão a comparação
+   lado a lado se perde. */
+/* Usa 'translate', não 'transform': o fill-mode 'both' fixa o valor final
+   para sempre, e o tecladinho 3D precisa do transform livre. As duas
+   propriedades compõem — o translate é aplicado antes. */
+@keyframes carta-entra {
+  from { opacity: 0; translate: 0 10px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+.carta-entra {
+  animation: carta-entra var(--dur-state) var(--ease-snap) both;
+}
+
+/* Régua: o trecho acende ao passar o mouse sobre um destino, em vez de piscar
+   de cinza para azul. Mesma faixa curta do hover dos ambientes. */
+.regua-trecho line,
+.regua-trecho path,
+.regua-trecho text,
+.regua-marco {
+  transition:
+    stroke var(--dur-micro) var(--ease-snap),
+    stroke-width var(--dur-micro) var(--ease-snap),
+    fill var(--dur-micro) var(--ease-snap),
+    r var(--dur-micro) var(--ease-snap);
+}
+
+/* Delta só de deslocamento: termina antes de a cena da situação assumir o
+   foco, senão a cauda toca escondida atrás do overlay. Amarrado à duração do
+   movimento — o pino chega e a pílula acaba junto. */
+.delta-sobe-curto {
+  animation: delta-sobe var(--dur-move) var(--ease-snap) both;
+}
+
+/* Saída das cenas: a entrada já era animada e a saída era corte seco. A
+   desmontagem espera o fim desta animação (ver usePresenca). */
+@keyframes cena-sai {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(4px) scale(0.985); }
+}
+
+.cena-sai {
+  animation: cena-sai var(--dur-saida) var(--ease-snap) both;
+}
+
+@keyframes cena-fundo-sai {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.cena-fundo-sai {
+  animation: cena-fundo-sai var(--dur-saida) linear both;
+}
+
+/*
+  Carta de decisão. O componente entrega só --acento e --acento-btn; todo o
+  resto sai daqui por color-mix. Assim uma estratégia é um hex, e a mistura com
+  --color-txt faz os tons se virarem sozinhos nos dois temas: clarear sobre o
+  fundo escuro, escurecer sobre o branco.
+
+  A cor fica no ícone, na borda, no selo e no botão — o fundo continua o do
+  tema, com um sopro de matiz só para a carta ter identidade de longe.
+*/
+.carta-acento {
+  background: color-mix(in oklab, var(--acento) 7%, var(--color-modal-card));
+  border-color: color-mix(in oklab, var(--acento) 45%, var(--color-line));
+}
+.carta-glifo {
+  border-color: color-mix(in oklab, var(--acento-btn) 25%, var(--color-line));
+  background: linear-gradient(315deg, var(--acento), color-mix(in srgb, var(--acento) 70%, black));
+}
+.carta-acento .carta-titulo {
+  color: color-mix(in oklab, var(--acento) 72%, var(--color-txt));
+}
+.carta-action {
+  background: linear-gradient(to top, var(--acento), color-mix(in srgb, var(--acento) 70%, black)), var(--acento);
+}
+.carta-acento .carta-selo {
+  background: color-mix(in oklab, var(--acento) 15%, transparent);
+  color: color-mix(in oklab, var(--acento) 65%, var(--color-txt));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--acento) 38%, transparent);
+}
+/* :not(:disabled) para o estado desabilitado do Tailwind continuar vencendo. */
+.carta-acento .carta-botao:not(:disabled) {
+  background: var(--acento-btn);
+}
+.carta-acento .carta-botao:not(:disabled):hover {
+  background: color-mix(in oklab, var(--acento-btn) 85%, var(--color-txt));
+}
+
+/*
+  Inclinação 3D no hover. O JS só escreve quanto o cursor se afastou do centro;
+  a perspectiva, o limite e o descanso ficam aqui.
+
+  A carta gira em torno do eixo vertical, acompanhando o cursor na
+  horizontal: indo para a direita, a borda direita afunda. Só este eixo — ela
+  não tomba para frente nem para trás. Por isso o token se chama --tilt-giro e
+  não --tilt-x: "eixo x" é ambíguo entre o eixo do movimento e o da rotação.
+
+  Um detalhe que não é enfeite: a sombra corre no sentido OPOSTO ao da
+  inclinação. É ela que faz a carta parecer levantada da mesa em vez de
+  apenas torta — sem isso o efeito lê como distorção, não como volume.
+*/
+.carta-3d {
+  /* Fixo, não ligado no hover: criar e destruir a camada a cada entrada do
+     ponteiro custa mais do que mantê-la. São três cartas, não uma lista. */
+  will-change: transform;
+  transform: perspective(var(--tilt-perspectiva)) rotateY(var(--tilt-giro, 0deg))
+    scale(var(--tilt-escala, 1));
+  box-shadow: var(--tilt-sombra-x, 0px) var(--tilt-sombra-y, 2px)
+    var(--tilt-desfoque, 6px) rgb(0 0 0 / var(--tilt-sombra-alfa, 0.18));
+  /* Substitui o transition-all do utilitário: precisamos de tempos diferentes
+     para o transform (rápido, segue o cursor) e para a opacidade (a escolha). */
+  transition:
+    transform var(--dur-tilt-volta) var(--ease-move),
+    box-shadow var(--dur-tilt-volta) var(--ease-move),
+    opacity var(--dur-micro) var(--ease-snap),
+    border-color var(--dur-micro) var(--ease-snap);
+}
+/* Enquanto o ponteiro está em cima, encurta: seguir o cursor com 420ms
+   daria a sensação de elástico, que é justamente o que não queremos. */
+.carta-3d[data-inclinando='sim'] {
+  transition:
+    transform var(--dur-tilt) linear,
+    box-shadow var(--dur-tilt) linear,
+    opacity var(--dur-micro) var(--ease-snap),
+    border-color var(--dur-micro) var(--ease-snap);
+}
+@media (prefers-reduced-motion: reduce) {
+  .carta-3d {
+    transform: none;
+  }
+}
+
+/*
+  Virada das cartas: elas chegam de costas e giram para a frente, escalonadas.
+
+  São três camadas, e a razão é técnica: `overflow: hidden` força
+  `transform-style: flat`, e a frente precisa dele para recortar a tarja e a
+  imagem nos cantos arredondados. Então a frente não pode ser o elemento que
+  gira. O palco dá a perspectiva, o miolo gira em 3D, e as duas faces vivem
+  dentro dele.
+
+  É animação e não transição de propósito: assim a carta já nasce de costas e
+  vira sozinha, sem depender de o React trocar um estado no quadro seguinte ao
+  da montagem — que é justamente onde esse efeito costuma falhar.
+*/
+.carta-palco {
+  perspective: var(--flip-perspectiva);
+}
+.carta-giro {
+  position: relative;
+  height: 100%;
+  transform-style: preserve-3d;
+  animation: carta-vira var(--dur-flip) var(--ease-move) both;
+}
+/*
+  Virada a carta, ela SAI do 3D. Não é limpeza opcional: o `both` da animação
+  deixa o rotateY(0) grudado no miolo, e enquanto o contexto preserve-3d
+  existir o compositor mantém as duas faces vivas — inclusive a imagem do
+  verso. Cada quadro da inclinação passava a recompor essa cena inteira, e o
+  hover, que era fluido, começou a engasgar. Aqui o miolo volta a ser uma
+  caixa comum e o verso é descartado.
+*/
+.carta-giro[data-revelada='sim'] {
+  transform-style: flat;
+  transform: none;
+  animation: none;
+}
+.carta-giro[data-revelada='sim'] .carta-frente {
+  backface-visibility: visible;
+}
+.carta-giro[data-revelada='sim'] .carta-verso {
+  display: none;
+}
+@keyframes carta-vira {
+  from { transform: rotateY(180deg); }
+  to   { transform: rotateY(0deg); }
+}
+.carta-frente,
+.carta-verso {
+  backface-visibility: hidden;
+}
+/* O verso ocupa exatamente a caixa da frente, já virado — é o que faz dele a
+   outra face da mesma carta em vez de um segundo cartão. */
+.carta-verso {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in oklab, var(--acento) 45%, var(--color-line));
+}
+.carta-verso img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Sem a virada as cartas já entram de frente. O atraso escalonado não é
+     coberto pela regra global, que só zera duração. */
+  .carta-giro {
+    animation: none;
+    transform: none;
+  }
 }

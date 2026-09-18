@@ -2,6 +2,8 @@ import { formatMeters, formatMinutes, type ActionSummary, type Availability } fr
 import { travelMinutes } from '../domain/movement';
 import type { RoomDef, RoomState, SituationAction, SituationDef } from '../domain/types';
 import { SituationCard } from './SituationCard';
+import { useState } from 'react';
+import { duracaoCSS } from '../hooks/useMotion';
 import { Icon } from './icons';
 import type { ComponentType } from 'react';
 
@@ -48,6 +50,8 @@ type ConfirmProps = {
   isReturn: boolean;
   isDeposito: boolean;
   refillMinutes: number;
+  /** A cena está saindo: o domínio já mudou de fase, a casca visual sai depois. */
+  saindo?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -60,18 +64,21 @@ export function RoomConfirmDialog({
   isReturn,
   isDeposito,
   refillMinutes,
+  saindo,
   onConfirm,
   onCancel,
 }: ConfirmProps) {
   const minutos = isDeposito ? refillMinutes : cleaningMinutes;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+    <div
+      className={`${saindo ? 'cena-fundo-sai' : 'cena-fundo'} fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4`}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
-        className="w-full max-w-sm rounded-2xl border border-line bg-modal p-6"
+        className={`${saindo ? 'cena-sai' : 'cena-entra'} w-full max-w-sm rounded-2xl border border-line bg-modal p-6`}
       >
         <div className="flex flex-col items-center rounded-xl bg-modal-card p-5">
           <RoomThumb room={room} />
@@ -123,7 +130,7 @@ export function RoomConfirmDialog({
             type="button"
             onClick={onConfirm}
             autoFocus
-            className="flex-1 rounded-lg bg-accent py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-[#6189f5]"
+            className="flex-1 rounded-lg bg-accent py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-accent-hover"
           >
             Confirmar e ir
           </button>
@@ -159,6 +166,8 @@ function Linha({
 /* ------------------------------------------------------------------ */
 
 type SituationProps = {
+  /** A cena está saindo: o domínio já mudou de fase, a casca visual sai depois. */
+  saindo?: boolean;
   situation: SituationDef;
   room: RoomDef;
   distance: number;
@@ -173,15 +182,31 @@ export function SituationDialog({
   distance,
   cleaningMinutes,
   cards,
+  saindo,
   onChoose,
 }: SituationProps) {
+  /**
+   * Carta marcada, antes de a decisão ser aplicada. Serve só para o jogador ver
+   * o que escolheu: a marcada acende e as outras duas recuam. A decisão sai
+   * 190ms depois — tempo de perceber, não de esperar.
+   */
+  const [escolhida, setEscolhida] = useState<string | null>(null);
+
+  const escolher = (actionId: string) => {
+    if (escolhida) return; // trava o clique duplo
+    setEscolhida(actionId);
+    window.setTimeout(() => onChoose(actionId), duracaoCSS('--dur-escolha', 240));
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-3 sm:items-center sm:p-6">
+    <div
+      className={`${saindo ? 'cena-fundo-sai' : 'cena-fundo'} fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-3 sm:items-center sm:p-6`}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="situation-title"
-        className="max-h-[94vh] w-full max-w-6xl overflow-y-auto rounded-2xl border border-line bg-modal p-5 sm:p-6"
+        className={`${saindo ? 'cena-sai' : 'cena-entra'} max-h-[94vh] w-full max-w-6xl overflow-y-auto rounded-2xl border border-line bg-modal p-5 sm:p-6`}
       >
         <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
           {/* Prévia da sala, como no mockup */}
@@ -210,10 +235,13 @@ export function SituationDialog({
                 <SituationCard
                   key={card.action.id}
                   action={card.action}
+                  situationId={situation.id}
                   summary={card.summary}
                   availability={card.availability}
                   index={index}
-                  onChoose={onChoose}
+                  escolhida={escolhida === card.action.id}
+                  recuada={escolhida !== null && escolhida !== card.action.id}
+                  onChoose={escolher}
                 />
               ))}
             </div>

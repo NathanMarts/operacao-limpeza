@@ -34,6 +34,8 @@ type Props = {
   minutesUntilFree: number;
   cleaningMinutes: number;
   onSelect: (roomId: string) => void;
+  /** Avisa o mapa qual ambiente está sob o cursor, para a prévia da rota. */
+  onHover?: (roomId: string | null) => void;
 };
 
 export function Room({
@@ -45,6 +47,7 @@ export function Room({
   cleaningMinutes,
   reservedDepth = 0,
   onSelect,
+  onHover,
 }: Props) {
   const interactive = visual === 'disponivel' || visual === 'pendente' || visual === 'apoio';
   const { x, y, width, height, doorX } = geometry;
@@ -82,6 +85,10 @@ export function Room({
       aria-disabled={!interactive}
       className={interactive ? 'mapa-alvo cursor-pointer' : 'cursor-not-allowed'}
       onClick={() => interactive && onSelect(room.id)}
+      onMouseEnter={() => interactive && onHover?.(room.id)}
+      onMouseLeave={() => interactive && onHover?.(null)}
+      onFocus={() => interactive && onHover?.(room.id)}
+      onBlur={() => interactive && onHover?.(null)}
       onKeyDown={(event) => {
         if (interactive && (event.key === 'Enter' || event.key === ' ')) {
           event.preventDefault();
@@ -91,13 +98,37 @@ export function Room({
     >
       {/* Miolo branco: garante que o pastel apareça igual ao mockup */}
       <rect x={x} y={y} width={width} height={height} fill="#ffffff" />
-      <rect x={x} y={y} width={width} height={height} fill={fill} fillOpacity={fillOpacity} />
+      <rect
+        className="mapa-sala-fundo"
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill={fill}
+        fillOpacity={fillOpacity}
+      />
 
       {visual === 'pendente' && (
-        <rect x={x} y={y} width={width} height={height} fill="url(#hachura-pendente)" pointerEvents="none" />
+        <rect
+          className="mapa-fade"
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          fill="url(#hachura-pendente)"
+          pointerEvents="none"
+        />
       )}
       {visual === 'bloqueada' && (
-        <rect x={x} y={y} width={width} height={height} fill="url(#hachura-bloqueada)" pointerEvents="none" />
+        <rect
+          className="mapa-fade"
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          fill="url(#hachura-bloqueada)"
+          pointerEvents="none"
+        />
       )}
 
       {interactive && (
@@ -317,7 +348,7 @@ export function Room({
 
       {/* Selos de estado: legíveis sem depender de cor */}
       {visual === 'concluida' && (
-        <g pointerEvents="none">
+        <g className="mapa-selo" pointerEvents="none">
           <circle cx={x + width - 12} cy={y + 12} r={8} fill="#34d399" />
           <path
             d={`M ${x + width - 16} ${y + 12} l 3 3.5 l 6 -7`}
@@ -330,13 +361,13 @@ export function Room({
         </g>
       )}
       {visual === 'pendente' && (
-        <g pointerEvents="none">
+        <g className="mapa-selo" pointerEvents="none">
           <circle cx={x + width - 12} cy={y + 12} r={8} fill="#f0b429" />
           <path d={`M ${x + width - 12} ${y + 5} a 7 7 0 0 0 0 14 z`} fill="#4a2f02" />
         </g>
       )}
       {visual === 'bloqueada' && (
-        <g pointerEvents="none">
+        <g className="mapa-selo" pointerEvents="none">
           <circle cx={x + width - 12} cy={y + 12} r={8} fill="#5b6472" />
           <rect x={x + width - 16} y={y + 11} width={8} height={6} rx={1} fill="#e8edf2" />
           <path

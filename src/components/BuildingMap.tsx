@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
+  DEPOSITO_POSITION,
   ENTRADA_DESENHO_M,
   ENTRANCE_POSITION,
   buildingSpanMeters,
@@ -8,8 +9,9 @@ import {
   rooms,
   roomsById,
 } from '../data/rooms';
-import type { GameState } from '../domain/types';
-import { formatMeters } from '../domain/effects';
+import { formatMeters, formatMinutes } from '../domain/effects';
+import { distanceBetween, travelMinutes } from '../domain/movement';
+import type { GameState, LogEntry } from '../domain/types';
 import { PlayerPin } from './PlayerPin';
 import { Room, type RoomGeometry, type RoomVisualState } from './Room';
 
@@ -38,6 +40,10 @@ const COTA_LINE_Y = 6 + COTA_DESCIDA;
    cinzas que você de fato caminhou, e os círculos cobrem os marcos. */
 const TRAIL_Y = COTA_LINE_Y;
 const TRAIL_DOT_R = 7.5;
+/* A prévia corre SOBRE a régua, no mesmo trilho do trajeto: é a mesma pergunta
+   ("quanto tenho de andar?"), medida na mesma linha. O pontilhado e a cor de
+   ação a distinguem do trecho já percorrido, que é sólido. */
+const PREVIA_Y = COTA_LINE_Y;
 
 /* O corredor nasce logo dentro da parede oeste e morre na entrada, a leste. */
 const CORRIDOR_X1 = toX(buildingStartMeters) + 8;
@@ -59,6 +65,84 @@ const avanco = (lado: 'top' | 'bottom') =>
 const WIDTH = toX(buildingSpanMeters) + MARGIN_X;
 const CENTER_Y = MARGIN_Y + avanco('top');
 const HEIGHT = CENTER_Y + avanco('bottom') + MARGIN_Y;
+
+/**
+ * Consequência de uma decisão, ancorada no ambiente que a recebeu. Os valores
+ * vêm do próprio LogEntry — os mesmos que a tela final usa para explicar o
+ * total —, então não há número inventado aqui. Máximo de três: tempo, material
+ * e deslocamento. Estado da sala não entra, porque o próprio ambiente já muda.
+ */
+type Delta = { texto: string; cor: string };
+
+const COR_DELTA = {
+  tempo: '#f0b429',
+  material: '#4f7df3',
+  deslocamento: '#93a7b8',
+  bom: '#34d399',
+  /* Mesmos hex já usados no mapa: o âmbar da pendência é o da hachura e do
+     selo; o cinza-azulado do bloqueio é o --color-txt-2 do tema. Nenhuma cor
+     nova entra aqui. Pendência/bloqueio nunca coexistem com tempo ou
+     deslocamento numa mesma leva, então não há ambiguidade de moeda. */
+  pendencia: '#f0b429',
+  bloqueio: '#93a7b8',
+} as const;
+
+function deltasDoLog(entry: LogEntry | null): Delta[] {
+  if (!entry) return [];
+  const lista: Delta[] = [];
+
+  const minutos = entry.deltaCleaning + entry.deltaEvent + entry.deltaIdle;
+  if (minutos > 0) lista.push({ texto: `+${formatMinutes(minutos)} min`, cor: COR_DELTA.tempo });
+
+  if (entry.deltaCharges < 0) {
+    const n = -entry.deltaCharges;
+    lista.push({ texto: `−${n} ${n === 1 ? 'carga' : 'cargas'}`, cor: COR_DELTA.material });
+  } else if (entry.deltaCharges > 0) {
+    lista.push({ texto: `+${entry.deltaCharges} cargas`, cor: COR_DELTA.bom });
+  }
+
+  if (entry.deltaDistance > 0 && lista.length < 3) {
+    lista.push({ texto: `+${formatMeters(entry.deltaDistance)} m`, cor: COR_DELTA.deslocamento });
+  }
+
+  return lista.slice(0, 3);
+}
+
+/**
+ * Feedback para as ações que não cobram nada agora e criam consequência
+ * futura — adiar, pular, interditar, esperar. Elas não têm delta numérico, e
+ * sem isto o jogador escolhia postergar e não recebia resposta nenhuma, que é
+ * justamente a decisão mais importante do jogo.
+ *
+ * Todos os números vêm do estado real do ambiente depois da ação: residual da
+ * pendência, minutos de bloqueio, sujeira acumulada. Nada é inventado, e nunca
+ * aparece "+0 min". Uma pílula só.
+ */
+function consequenciaFutura(
+  entry: LogEntry | null,
+  state: GameState,
+  minutosAteLiberar: (roomId: string) => number,
+  totalAgora: number,
+): Delta | null {
+  if (!entry?.roomId) return null;
+  const rs = state.rooms[entry.roomId];
+  if (!rs) return null;
+
+  if (rs.blockedUntilMinute !== null && rs.blockedUntilMinute > totalAgora) {
+    const min = Math.ceil(minutosAteLiberar(entry.roomId));
+    return { texto: `bloqueada ${min} min`, cor: COR_DELTA.bloqueio };
+  }
+  if (rs.status === 'pendente') {
+    return { texto: `↩ voltar: ${rs.residualMinutes} min`, cor: COR_DELTA.pendencia };
+  }
+  if (rs.status === 'nao-iniciada' && rs.extraDirtMinutes > 0) {
+    return { texto: `adiada: +${rs.extraDirtMinutes} min`, cor: COR_DELTA.pendencia };
+  }
+  if (rs.status === 'nao-iniciada') {
+    return { texto: 'sala intocada', cor: COR_DELTA.deslocamento };
+  }
+  return null;
+}
 
 /** Cor do trecho por natureza da parada — retorno e recarga se destacam. */
 const COR_DO_TRECHO = {
@@ -82,7 +166,7 @@ type Leg = {
  */
 /** Um trecho do corredor, desenhado sobre a régua: origem vazada, seta de
  *  sentido, destino numerado no lugar do marco e a distância na pílula. */
-function TrailLeg({ leg, y }: { leg: Leg; y: number }) {
+function TrailLeg({ leg, y, desenhando }: { leg: Leg; y: number; desenhando: boolean }) {
   const cor = COR_DO_TRECHO[leg.purpose];
   const meio = (leg.x1 + leg.x2) / 2;
   const sentido = Math.sign(leg.x2 - leg.x1) || 1;
@@ -94,7 +178,27 @@ function TrailLeg({ leg, y }: { leg: Leg; y: number }) {
     <g pointerEvents="none">
       {!parado && (
         <>
-          <line x1={leg.x1} x2={leg.x2} y1={y} y2={y} stroke={cor} strokeWidth={3} strokeLinecap="round" />
+          {/* Enquanto o trabalhador caminha, a linha vai sendo traçada do
+              ponto de partida até o destino — o trecho aparece na mesma
+              velocidade do pino. Revendo um trecho antigo, ela já está lá. */}
+          <line
+            x1={leg.x1}
+            x2={leg.x2}
+            y1={y}
+            y2={y}
+            stroke={cor}
+            strokeWidth={3}
+            strokeLinecap="round"
+            className={desenhando ? 'trilha-desenha' : undefined}
+            style={
+              desenhando
+                ? ({
+                    strokeDasharray: Math.abs(leg.x2 - leg.x1),
+                    '--trilha-len': `${Math.abs(leg.x2 - leg.x1)}`,
+                  } as React.CSSProperties)
+                : undefined
+            }
+          />
           <circle cx={leg.x1} cy={y} r={4.5} fill="#d5d4d4" stroke={cor} strokeWidth={2.5} />
           <path
             d={`M ${meio - 9 * sentido} ${y - 5} L ${meio} ${y} L ${meio - 9 * sentido} ${y + 5} Z`}
@@ -202,6 +306,10 @@ type Props = {
   cleaningMinutesFor: (roomId: string) => number;
   minutesUntilFree: (roomId: string) => number;
   onSelect: (roomId: string) => void;
+  /** O trabalhador está atravessando o corredor agora. */
+  caminhando?: boolean;
+  /** Última entrada do log, de onde saem os deltas da decisão. */
+  ultimoLog?: LogEntry | null;
 };
 
 export function BuildingMap({
@@ -212,7 +320,11 @@ export function BuildingMap({
   cleaningMinutesFor,
   minutesUntilFree,
   onSelect,
+  caminhando = false,
+  ultimoLog = null,
 }: Props) {
+  /* Ambiente sob o cursor: só ele recebe a prévia da rota. */
+  const [emHover, setEmHover] = useState<string | null>(null);
   /**
    * Um trecho por parada da rota. Só um aparece de cada vez — o atual por
    * padrão, ou o escolhido na lista de sequência. Desenhar todos empilhados
@@ -238,6 +350,69 @@ export function BuildingMap({
     legs.length === 0
       ? null
       : (legs[selectedStep ?? legs.length - 1] ?? legs[legs.length - 1]);
+
+/**
+   * Prévia da rota: em vez de desenhar uma linha nova, acende o pedaço da
+   * RÉGUA que o trabalhador vai cruzar até o ambiente sob o cursor — trechos,
+   * setas, cotas e marcos. O badge mostra a soma, então o jogador vê de onde
+   * vem o número: são aqueles trechos, somados.
+   */
+  const previa = useMemo(() => {
+    if (!emHover || caminhando) return null;
+    const room = roomsById[emHover];
+    if (!room) return null;
+    const metros = distanceBetween(state.currentPosition, room.corridorPosition);
+    if (metros === 0) return null;
+    const de = Math.min(state.currentPosition, room.corridorPosition);
+    const ate = Math.max(state.currentPosition, room.corridorPosition);
+    return {
+      metros,
+      de,
+      ate,
+      /* Um trecho conta se estiver inteiro dentro do intervalo; um marco
+         conta se cair nele, pontas incluídas. */
+      temTrecho: (inicio: number, fim: number) =>
+        Math.min(inicio, fim) >= de && Math.max(inicio, fim) <= ate,
+      temMarco: (posicao: number) => posicao >= de && posicao <= ate,
+      meio: (xDaPosicao(de) + xDaPosicao(ate)) / 2,
+    };
+  }, [emHover, caminhando, state.currentPosition]);
+
+  const deltas = useMemo(() => {
+    const numericos = deltasDoLog(ultimoLog);
+    if (numericos.length > 0) return numericos;
+    const futura = consequenciaFutura(ultimoLog, state, minutesUntilFree, totalMinutes);
+    return futura ? [futura] : [];
+  }, [ultimoLog, state, minutesUntilFree, totalMinutes]);
+
+  /* Só deslocamento: a pílula acaba quando o pino chega, antes de a cena
+     da situação cobrir o mapa. */
+  const soTrajeto =
+    !!ultimoLog &&
+    ultimoLog.deltaDistance > 0 &&
+    ultimoLog.deltaCleaning + ultimoLog.deltaEvent + ultimoLog.deltaIdle === 0 &&
+    ultimoLog.deltaCharges === 0;
+
+  /**
+   * Os deltas saem em FILEIRA horizontal, a 30px do corredor, centrados na
+   * porta do ambiente.
+   *
+   * Em fileira a ordem é esquerda→direita, igual nas duas alas — uma pilha
+   * vertical invertia a leitura na ala sul, porque lá ela cresce para baixo.
+   * E 30px é a única faixa livre nos dois lados: o selo de estado ocupa 4–20px
+   * (ele fica junto ao corredor nas salas da ala sul) e o nome da sala fica em
+   * 60px. Assim as pílulas não cobrem nem um nem outro, em ambiente nenhum.
+   */
+  const ancora = useMemo(() => {
+    if (!ultimoLog?.roomId) return null;
+    const room = roomsById[ultimoLog.roomId];
+    if (!room) return null;
+    const paraBaixo = room.side === 'bottom';
+    return {
+      x: xDaPosicao(room.corridorPosition),
+      y: CENTER_Y + (paraBaixo ? CORRIDOR_HEIGHT / 2 + 30 : -CORRIDOR_HEIGHT / 2 - 30),
+    };
+  }, [ultimoLog]);
 
   const playerX = xDaPosicao(state.currentPosition);
   /* O pino encosta no marco — ou no topo do círculo do trecho, quando ele está
@@ -276,6 +451,9 @@ export function BuildingMap({
       />
 
       {/* ---- Ambientes ---- */}
+      {/* Durante a caminhada o bloco não aceita novo destino: o trabalhador
+          está no corredor, não parado escolhendo. */}
+      <g style={caminhando ? { pointerEvents: 'none' } : undefined}>
       {rooms.map((room) => (
         <Room
           key={room.id}
@@ -287,8 +465,32 @@ export function BuildingMap({
           cleaningMinutes={cleaningMinutesFor(room.id)}
           reservedDepth={FAIXA_ANINHADA[room.id] ?? 0}
           onSelect={onSelect}
+          onHover={setEmHover}
         />
       ))}
+      </g>
+
+      {/* ---- Depósito com material baixo ----
+          Anel lento em volta da porta do DEP quando o carrinho não tem mais o
+          suficiente para o serviço. Sugere planejar a ida, sem piscar. */}
+      {state.charges <= 3 && (
+        <g pointerEvents="none">
+          {[0, 1].map((i) => (
+            <circle
+              key={i}
+              className="dep-anel"
+              style={{ animationDelay: `${i * 1000}ms` }}
+              cx={xDaPosicao(DEPOSITO_POSITION)}
+              cy={CENTER_Y + COTA_LINE_Y}
+              r={12}
+              fill="none"
+              stroke="#4f7df3"
+              strokeWidth={1.75}
+            />
+          ))}
+        </g>
+      )}
+
 
       {/* ---- Régua do corredor ----
            Vem DEPOIS dos ambientes de propósito: a caixa de escada e o quadro
@@ -300,19 +502,20 @@ export function BuildingMap({
         /* A entrada fica a leste: afastar-se dela corre para a esquerda. */
         const sentido = Math.sign(xFim - xInicio);
         const meio = (xInicio + xFim) / 2;
+        const noPercurso = previa?.temTrecho(segmento.inicio, segmento.fim) ?? false;
         return (
-          <g key={segmento.inicio} pointerEvents="none">
+          <g className="regua-trecho" key={segmento.inicio} pointerEvents="none">
             <line
               x1={xInicio + sentido * (MARCO_RAIO + 3)}
               x2={xFim - sentido * (MARCO_RAIO + 6)}
               y1={CENTER_Y + COTA_LINE_Y}
               y2={CENTER_Y + COTA_LINE_Y}
-              stroke="#8d8d8d"
-              strokeWidth={1}
+              stroke={noPercurso ? '#2f6fe0' : '#8d8d8d'}
+              strokeWidth={noPercurso ? 2 : 1}
             />
             <path
               d={`M ${xFim - sentido * (MARCO_RAIO + 1)} ${CENTER_Y + COTA_LINE_Y} l ${-sentido * 5} -3 l 0 6 z`}
-              fill="#8d8d8d"
+              fill={noPercurso ? '#2f6fe0' : '#8d8d8d'}
             />
             <text
               x={meio}
@@ -320,8 +523,8 @@ export function BuildingMap({
               textAnchor="middle"
               fontFamily="Inter, sans-serif"
               fontSize="9"
-              fontWeight="500"
-              fill="#4d4d4d"
+              fontWeight={noPercurso ? 700 : 500}
+              fill={noPercurso ? '#2f6fe0' : '#4d4d4d'}
             >
               {`${formatMeters(segmento.metros)}m`}
             </text>
@@ -330,22 +533,118 @@ export function BuildingMap({
       })}
 
       {/* ---- Marcos das distâncias ---- */}
-      {MARCOS.map((metros) => (
-        <circle
-          key={metros}
-          cx={xDaPosicao(metros)}
-          cy={CENTER_Y + COTA_LINE_Y}
-          r={MARCO_RAIO}
-          fill="#6f6f6f"
-          stroke="#d5d4d4"
-          strokeWidth={1}
-          pointerEvents="none"
-        />
-      ))}
+      {MARCOS.map((metros) => {
+        const noPercurso = previa?.temMarco(metros) ?? false;
+        return (
+          <circle
+            className="regua-marco"
+            key={metros}
+            cx={xDaPosicao(metros)}
+            cy={CENTER_Y + COTA_LINE_Y}
+            r={noPercurso ? MARCO_RAIO + 0.75 : MARCO_RAIO}
+            fill={noPercurso ? '#2f6fe0' : '#6f6f6f'}
+            stroke="#d5d4d4"
+            strokeWidth={1}
+            pointerEvents="none"
+          />
+        );
+      })}
 
+
+      {/* ---- Prévia da rota no hover ----
+          Antes de confirmar, o jogador vê quanto vai precisar andar. Pontilhado
+          entre a posição atual e o destino, com distância e tempo de caminhada. */}
+      {previa && (
+        <g className="previa-rota" pointerEvents="none">
+          <rect
+            x={previa.meio - 34}
+            y={CENTER_Y + PREVIA_Y - 7}
+            width={68}
+            height={14}
+            rx={7}
+            fill="#101a2b"
+            stroke="#4f7df3"
+            strokeWidth={1}
+          />
+          <text
+            x={previa.meio}
+            y={CENTER_Y + PREVIA_Y + 3.5}
+            textAnchor="middle"
+            fontFamily="Inter, sans-serif"
+            fontSize="8.5"
+            fontWeight="600"
+            fill="#9dc0ff"
+          >
+            {`${formatMeters(previa.metros)} m · ${formatMinutes(travelMinutes(previa.metros))} min`}
+          </text>
+        </g>
+      )}
 
       {/* ---- Trecho em exibição: o atual, ou o escolhido na sequência ---- */}
-      {showRoute && legVisivel && <TrailLeg leg={legVisivel} y={CENTER_Y + TRAIL_Y} />}
+      {showRoute && legVisivel && (
+        <TrailLeg
+          /* A chave troca a cada parada, então a linha se desenha de novo em
+             vez de reaproveitar a animação já terminada.
+
+             O prefixo não é enfeite. O grupo dos deltas, logo abaixo, é irmão
+             deste no <svg> e numera pelo log; as duas contagens começam em 1 e
+             sobem juntas. Chaves iguais entre irmãos é comportamento indefinido
+             no React: uma sobrescreve a outra no mapa de filhos antigos, a
+             perdida nunca é marcada para remoção, e o trecho ficava desenhado
+             na tela para sempre. */
+          key={`trecho-${legVisivel.order}`}
+          leg={legVisivel}
+          y={CENTER_Y + TRAIL_Y}
+          desenhando={caminhando && selectedStep === null}
+        />
+      )}
+
+      {/* ---- Consequência da última ação, ancorada no ambiente ---- */}
+      {deltas.length > 0 && ancora && (
+        <g
+          key={`delta-${ultimoLog?.index}`}
+          className={soTrajeto ? 'delta-sobe-curto' : 'delta-sobe'}
+          pointerEvents="none"
+        >
+          {(() => {
+            /* Largura por conteúdo: "+8 min" não precisa do mesmo espaço que
+               "↩ voltar: 6 min", e pílula fixa estourava as salas estreitas. */
+            const VAO = 5;
+            const larguras = deltas.map((d) => Math.max(46, d.texto.length * 5.6 + 16));
+            const total = larguras.reduce((a, b) => a + b, 0) + VAO * (deltas.length - 1);
+            let cursor = ancora.x - total / 2;
+            return deltas.map((delta, i) => {
+              const largura = larguras[i];
+              const x = cursor;
+              cursor += largura + VAO;
+              return (
+                <g key={delta.texto}>
+                  <rect
+                    x={x}
+                    y={ancora.y - 8}
+                    width={largura}
+                    height={16}
+                    rx={8}
+                    fill="#0b1220"
+                    opacity={0.92}
+                  />
+                  <text
+                    x={x + largura / 2}
+                    y={ancora.y + 3.5}
+                    textAnchor="middle"
+                    fontFamily="Inter, sans-serif"
+                    fontSize="9.5"
+                    fontWeight="700"
+                    fill={delta.cor}
+                  >
+                    {delta.texto}
+                  </text>
+                </g>
+              );
+            });
+          })()}
+        </g>
+      )}
 
       {/* ---- Pino de posição atual, do tileset ----
            Fica vermelho quando o carrinho zera: a mesma regra que desabilita a
@@ -354,7 +653,7 @@ export function BuildingMap({
       <g
         /* A ponta encosta logo acima do marco da posição atual. */
         transform={`translate(${playerX} ${CENTER_Y + COTA_LINE_Y - pinoApoio - 1.5})`}
-        style={{ transition: 'transform 400ms cubic-bezier(.4,0,.2,1)' }}
+        style={{ transition: 'transform var(--dur-move) var(--ease-move)' }}
       >
         <PlayerPin variant={state.charges === 0 ? 'sem-material' : 'padrao'} />
       </g>

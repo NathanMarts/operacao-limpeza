@@ -1,0 +1,73 @@
+name: Publicar no GitHub Pages
+
+on:
+  push:
+    # O repositório local está em master; main fica aqui porque é o padrão
+    # do GitHub e evita um workflow que nunca dispara.
+    branches: [master, main]
+  workflow_dispatch:
+
+# O deploy do Pages se autentica por OIDC: daí o id-token. contents fica
+# somente em leitura — nada é escrito de volta no repositório.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Um deploy por vez. Sem cancel-in-progress de propósito: cancelar no meio de
+# uma publicação deixaria o site pela metade.
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v4
+
+      # Lê a versão do campo packageManager do package.json.
+      - name: Instalar o pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Instalar o Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Testes
+        run: pnpm test
+
+      # Precisa vir antes do build: é daqui que sai o subpath do site.
+      - name: Descobrir o caminho do site
+        id: pages
+        uses: actions/configure-pages@v5
+
+      # O script build é `tsc -b && vite build`, então o typecheck entra aqui.
+      - name: Build
+        run: pnpm build
+        env:
+          PAGES_BASE: ${{ steps.pages.outputs.base_path }}
+
+      - name: Empacotar o dist
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Publicar
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar no Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

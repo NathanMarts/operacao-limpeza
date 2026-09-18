@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "packageManager": "pnpm@10.28.0",
   "description": "Operação Limpeza — protótipo de jogo para oficina de Pensamento Computacional",
   "scripts": {
     "dev": "vite",

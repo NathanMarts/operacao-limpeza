@@ -63,7 +63,7 @@ export const situations: SituationDef[] = [
       {
         id: 'adiar',
         label: 'Adiar a sala',
-        description: 'Não gasta nada agora, mas a sujeira acumula e a sala fica mais demorada depois.',
+        description: 'A sujeira acumula e a sala fica mais demorada depois.',
         requires: [],
         effects: [
           { type: 'addDirt', minutes: 3 },
@@ -152,7 +152,7 @@ export const situations: SituationDef[] = [
       {
         id: 'seguir',
         label: 'Adiar e seguir a rota',
-        description: 'Não gasta nada agora, mas a sala fica ocupada e indisponível por um tempo.',
+        description: 'A sala fica ocupada e indisponível por um tempo.',
         requires: [],
         effects: [
           { type: 'leaveUnstarted' },
@@ -219,7 +219,7 @@ export const situations: SituationDef[] = [
       {
         id: 'buscar-chave',
         label: 'Buscar a chave na entrada',
-        description: 'Volta até a entrada. A sala continua intocada e você fica lá na ponta oeste.',
+        description: 'Volta até a entrada. A sala fica intocada e você, na ponta oeste.',
         requires: [],
         effects: [
           { type: 'moveTo', target: 'entrada' },
@@ -230,8 +230,7 @@ export const situations: SituationDef[] = [
       {
         id: 'pedir-chave',
         label: 'Pedir a chave pelo rádio',
-        description:
-          'Alguém interrompe o que está fazendo e traz a cópia até você. A sala que essa pessoa estava usando fica ocupada mais tempo por causa da interrupção.',
+        description: 'Trazem a cópia até você. A sala de quem parou fica ocupada mais tempo.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -263,7 +262,7 @@ export const situations: SituationDef[] = [
       {
         id: 'trocar',
         label: 'Trocar no depósito',
-        description: 'Vai buscar equipamento novo e aproveita para reabastecer. A sala fica para depois.',
+        description: 'Busca equipamento novo e reabastece. A sala fica para depois.',
         requires: [],
         effects: [
           { type: 'moveTo', target: 'deposito' },
@@ -368,7 +367,7 @@ export const situations: SituationDef[] = [
       {
         id: 'secar-essencial',
         label: 'Enxugar o essencial',
-        description: 'Tira o excesso e fecha a janela. O resto seca sozinho, mas exige uma volta.',
+        description: 'Tira o excesso e fecha a janela. O resto seca sozinho.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -456,7 +455,7 @@ export const situations: SituationDef[] = [
       {
         id: 'buscar-material',
         label: 'Pedir que tragam material',
-        description: 'Eles descem ao depósito por você. A sala leva o tempo normal, mas o carrinho enche.',
+        description: 'Eles descem ao depósito por você e o carrinho enche.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -507,7 +506,7 @@ export const situations: SituationDef[] = [
       {
         id: 'isolar-cabine',
         label: 'Isolar a cabine e limpar o resto',
-        description: 'Fecha só aquela cabine e faz o restante. Fica um serviço pesado para a volta.',
+        description: 'Fecha só aquela cabine e faz o restante. Sobra serviço pesado.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -551,7 +550,7 @@ export const situations: SituationDef[] = [
       {
         id: 'rodo-rapido',
         label: 'Passar o rodo e voltar',
-        description: 'Tira a água grossa com pouco material. O piso ainda vai precisar de atenção.',
+        description: 'Tira a água grossa com pouco material. O piso ainda pede atenção.',
         requires: [{ type: 'minCharges', amount: { kind: 'const', value: 1 } }],
         effects: [
           { type: 'cleanTime', amount: halfBase },
@@ -562,7 +561,7 @@ export const situations: SituationDef[] = [
       {
         id: 'fechar-secar',
         label: 'Fechar para secar',
-        description: 'Interdita e deixa escoar sozinho. Sem custo agora, mas sai da rota por um tempo.',
+        description: 'Interdita e deixa escoar sozinho. Sai da rota por um tempo.',
         requires: [],
         effects: [
           { type: 'leaveUnstarted' },
@@ -583,7 +582,7 @@ export const situations: SituationDef[] = [
       {
         id: 'repor-do-carrinho',
         label: 'Repor do carrinho',
-        description: 'Usa a reserva que você carrega. Resolve na hora, consumindo mais material.',
+        description: 'Usa a reserva que você carrega. Resolve na hora, com mais material.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCostPlus', value: 1 } }],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -606,7 +605,7 @@ export const situations: SituationDef[] = [
       {
         id: 'anotar',
         label: 'Limpar e anotar para depois',
-        description: 'Faz a limpeza normal e deixa a reposição pendente para uma segunda passada.',
+        description: 'Limpeza normal; a reposição fica para uma segunda passada.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -685,7 +684,7 @@ export const situations: SituationDef[] = [
       {
         id: 'levar-sobra',
         label: 'Levar o que sobrou',
-        description: 'Carrega a sobra no seu carrinho e economiza material nos próximos ambientes.',
+        description: 'Carrega a sobra e economiza material nos próximos ambientes.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -816,7 +815,7 @@ export const situations: SituationDef[] = [
       {
         id: 'interditar',
         label: 'Interditar um lado e limpar',
-        description: 'Fecha metade da escada e faz o serviço inteiro, com o fluxo atrapalhando.',
+        description: 'Fecha metade da escada e faz tudo, com o fluxo atrapalhando.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -828,7 +827,7 @@ export const situations: SituationDef[] = [
       {
         id: 'entre-intervalos',
         label: 'Limpar entre os intervalos',
-        description: 'Aproveita as brechas. Sai no tempo normal, mas sobra um trecho para depois.',
+        description: 'Aproveita as brechas. Sai no tempo normal, sobra um trecho.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -871,7 +870,7 @@ export const situations: SituationDef[] = [
       {
         id: 'encerar',
         label: 'Aproveitar e encerar',
-        description: 'Com a escada limpa dá para encerar. Caro agora, mas você sai daqui rendendo.',
+        description: 'Com a escada limpa dá para encerar. Caro agora, rende depois.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCostPlus', value: 1 } }],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -908,7 +907,7 @@ export const situations: SituationDef[] = [
       {
         id: 'racionar',
         label: 'Racionar a água do balde',
-        description: 'Dá para fazer o serviço inteiro medindo cada litro. Rende menos por minuto.',
+        description: 'Faz o serviço inteiro medindo cada litro. Rende menos por minuto.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -920,7 +919,7 @@ export const situations: SituationDef[] = [
       {
         id: 'limpeza-seca',
         label: 'Limpar a seco e molhar depois',
-        description: 'Varre e tira o pó agora. A parte úmida fica pendente para quando a água voltar.',
+        description: 'Varre e tira o pó. A parte úmida espera a água voltar.',
         requires: [{ type: 'minCharges', amount: { kind: 'const', value: 1 } }],
         effects: [
           { type: 'cleanTime', amount: halfBase },
@@ -931,7 +930,7 @@ export const situations: SituationDef[] = [
       {
         id: 'esperar-agua',
         label: 'Esperar a água voltar',
-        description: 'Não custa nada agora, mas o ambiente fica fora da rota até o reparo terminar.',
+        description: 'O ambiente fica fora da rota até o reparo terminar.',
         requires: [],
         effects: [
           { type: 'leaveUnstarted' },
@@ -974,7 +973,7 @@ export const situations: SituationDef[] = [
       {
         id: 'adiantar-rota',
         label: 'Pedir que adiante sua rota',
-        description: 'Ele vai na frente preparando os próximos ambientes enquanto você trabalha aqui.',
+        description: 'Ele prepara os próximos ambientes enquanto você trabalha aqui.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -1011,7 +1010,7 @@ export const situations: SituationDef[] = [
       {
         id: 'reservar',
         label: 'Usar e deixar reservada',
-        description: 'Faz no tempo normal aqui e mantém a máquina no seu nome para as próximas.',
+        description: 'Tempo normal aqui, e a máquina fica no seu nome para as próximas.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -1076,8 +1075,7 @@ export const situations: SituationDef[] = [
       {
         id: 'assumir-o-que-ficou',
         label: 'Usar o material do evento',
-        description:
-          'Limpa com o que sobrou da montagem, sem abrir carga do carrinho. De passagem, avisa a coordenação, que remaneja o que estava travado.',
+        description: 'Usa a sobra da montagem, sem abrir carga. Libera o que está travado.',
         requires: [],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -1260,7 +1258,7 @@ export const situations: SituationDef[] = [
       {
         id: 'sinalizar',
         label: 'Só sinalizar e seguir',
-        description: 'Nada custa agora, mas a poça cresce e a sala fica pior para a próxima visita.',
+        description: 'A poça cresce e a sala fica pior para a próxima visita.',
         requires: [],
         effects: [
           { type: 'addDirt', minutes: 4 },
@@ -1334,7 +1332,7 @@ export const situations: SituationDef[] = [
       {
         id: 'parar-estocar',
         label: 'Parar e estocar tudo',
-        description: 'Organiza as caixas antes de limpar. Custa tempo e rende material por várias salas.',
+        description: 'Organiza as caixas antes de limpar e rende material por várias salas.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -1395,8 +1393,7 @@ export const situations: SituationDef[] = [
       {
         id: 'sem-repor',
         label: 'Improvisar com o que está à mão',
-        description:
-          'Não abre carga nova: aproveita o que já está solto no carrinho. Preserva material, mas é o caminho mais lento.',
+        description: 'Usa o que está solto no carrinho. Poupa material, mas é o mais lento.',
         requires: [],
         effects: [
           { type: 'cleanTime', amount: base },
@@ -1501,7 +1498,7 @@ export const situations: SituationDef[] = [
       {
         id: 'atender-em-outro',
         label: 'Atender em outro ambiente',
-        description: 'Fecha esta sala e resolve o pedido lá. Paga em rota: o ambiente fica ocupado.',
+        description: 'Fecha esta sala e resolve o pedido em outra, que fica ocupada.',
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },

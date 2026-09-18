@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { ComponentType, ReactNode } from 'react';
 import { Icon } from './icons';
 import { formatMeters, formatMinutes } from '../domain/effects';
+import { useCountUp } from '../hooks/useMotion';
 import { gameConfig } from '../data/gameConfig';
 import { objectives } from '../data/rooms';
 import type { ActiveBuff, GameState } from '../domain/types';
@@ -53,6 +54,11 @@ export function GameHeader({
   onToggleTheme: () => void;
 }) {
   const indoParaClaro = theme === 'dark';
+  /* Contadores no topo: hooks fora do JSX, para a ordem nunca depender de
+     renderização condicional. */
+  const tempoExibido = useCountUp(totalMinutes);
+  const distanciaExibida = useCountUp(distance, 1);
+  const cargasExibidas = useCountUp(charges, 1);
   return (
     <header className="flex flex-wrap items-center gap-4 bg-header px-5 py-3.5 sm:px-6">
       <div className="flex items-center gap-3.5">
@@ -75,13 +81,25 @@ export function GameHeader({
       </nav>
 
       <div className="ml-auto flex flex-wrap gap-3">
-        <MetricCard icon={Icon.tempo} label="Tempo total" value={`${formatMinutes(totalMinutes)} min`} />
-        <MetricCard icon={Icon.distancia} label="Distância percorrida" value={`${formatMeters(distance)} m`} />
+        {/* Os três números andam do valor anterior até o novo: o relógio do
+            turno, os metros caminhados e as cargas do carrinho viram registro
+            do trabalho feito, em vez de saltarem sem aviso. */}
+        <MetricCard
+          icon={Icon.tempo}
+          label="Tempo total"
+          value={`${formatMinutes(tempoExibido)} min`}
+        />
+        <MetricCard
+          icon={Icon.distancia}
+          label="Distância percorrida"
+          value={`${formatMeters(distanciaExibida)} m`}
+        />
         <MetricCard
           icon={Icon.material}
           label="Material"
-          value={`${charges}/${gameConfig.maxCharges}`}
+          value={`${Math.round(cargasExibidas)}/${gameConfig.maxCharges}`}
           alert={charges === 0}
+          atencao={charges > 0 && charges <= 3}
         />
         <button
           type="button"
@@ -133,16 +151,23 @@ function MetricCard({
   label,
   value,
   alert,
+  atencao,
 }: {
   icon: ComponentType<{ className?: string }>;
   label: string;
   value: string;
   alert?: boolean;
+  /** Estoque baixo, mas ainda dá para trabalhar: avisa sem alarmar. */
+  atencao?: boolean;
 }) {
   return (
     <div
-      className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 ${
-        alert ? 'border-warn/50 bg-warn/10' : 'border-line bg-panel'
+      className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 transition-colors duration-300 ${
+        alert
+          ? 'border-warn/50 bg-warn/10'
+          : atencao
+            ? 'border-accent/40 bg-accent-soft/25'
+            : 'border-line bg-panel'
       }`}
     >
       <Glyph className={`h-8 w-8 shrink-0 ${alert ? 'text-warn' : 'text-txt-2'}`} aria-hidden />
@@ -312,7 +337,7 @@ export function SequencePanel({
       )}
       {atual > 0 && (
         <p className="mt-2 text-center text-[11.5px] text-txt-3">
-          Clique em uma parada para rever o trecho no mapa.
+          Clique em uma parada para vê-la no mapa.
         </p>
       )}
     </Card>
@@ -365,7 +390,7 @@ export function SummaryPanel({ summary }: { summary: Summary }) {
 
   return (
     <Card title="Resumo atual" icon={Icon.resumo}>
-      <dl className="space-y-2.5">
+      <dl className="space-y-2">
         {linhas.map(([label, value]) => (
           <div key={label} className="flex items-baseline justify-between gap-3">
             <dt className="text-[13.5px] text-txt-2">{label}</dt>
