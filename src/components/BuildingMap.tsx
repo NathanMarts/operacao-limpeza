@@ -109,6 +109,42 @@ function deltasDoLog(entry: LogEntry | null): Delta[] {
 }
 
 /**
+ * Abatimentos de bônus aplicados nesta ação.
+ *
+ * O domínio já os calcula e registra, mas só dentro de `LogEntry.detail`, como
+ * prosa — e `deltaCharges` chega LÍQUIDO. Então uma limpeza inteiramente paga
+ * por um bônus não produzia pílula nenhuma: o jogador via o material não
+ * descer e não tinha como saber por quê. A tela final mostra o log; aqui o
+ * abatimento precisa aparecer no instante em que acontece.
+ *
+ * Formato produzido pelo domínio: "<ação> · <bônus>: −<n> carga|cargas|min",
+ * trechos separados por " · ". Ler daqui é apresentação: nenhum cálculo é
+ * refeito, e o número exibido é exatamente o que o domínio abateu.
+ */
+function abatimentosDoLog(entry: LogEntry | null): Delta[] {
+  if (!entry?.detail) return [];
+  const achados: Delta[] = [];
+  for (const trecho of entry.detail.split(' · ')) {
+    const corte = trecho.indexOf(': −');
+    if (corte < 0) continue;
+    const resto = trecho.slice(corte + 3).trim();
+    const espaco = resto.indexOf(' ');
+    if (espaco < 0) continue;
+    const valor = resto.slice(0, espaco);
+    const unidade = resto.slice(espaco + 1);
+    if (!Number.isFinite(Number(valor.replace(',', '.')))) continue;
+    achados.push({
+      texto:
+        unidade === 'min'
+          ? `${valor} min poupados`
+          : `${valor} ${unidade} poupada${unidade === 'carga' ? '' : 's'}`,
+      cor: COR_DELTA.bom,
+    });
+  }
+  return achados;
+}
+
+/**
  * Feedback para as ações que não cobram nada agora e criam consequência
  * futura — adiar, pular, interditar, esperar. Elas não têm delta numérico, e
  * sem isto o jogador escolhia postergar e não recebia resposta nenhuma, que é
@@ -380,6 +416,14 @@ export function BuildingMap({
 
   const deltas = useMemo(() => {
     const numericos = deltasDoLog(ultimoLog);
+    const poupados = abatimentosDoLog(ultimoLog);
+    if (poupados.length > 0) {
+      /* O abatimento é o motivo desta pílula existir: ele não pode ser o
+         pedaço descartado pelo limite de três. O deslocamento cede o lugar —
+         ele já aparece na pílula do próprio trecho da trilha. */
+      const semTrajeto = numericos.filter((d) => d.cor !== COR_DELTA.deslocamento);
+      return [...semTrajeto, ...poupados].slice(0, 3);
+    }
     if (numericos.length > 0) return numericos;
     const futura = consequenciaFutura(ultimoLog, state, minutesUntilFree, totalMinutes);
     return futura ? [futura] : [];

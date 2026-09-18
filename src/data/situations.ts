@@ -146,7 +146,7 @@ export const situations: SituationDef[] = [
         effects: [
           { type: 'cleanTime', amount: halfBase },
           { type: 'spendCharges', amount: { kind: 'const', value: 1 } },
-          { type: 'leavePending', residual: residual(2) },
+          { type: 'leavePending', residual: residual(1) },
         ],
       },
       {
@@ -510,7 +510,7 @@ export const situations: SituationDef[] = [
         requires: [{ type: 'minCharges', amount: { kind: 'roomCost' } }],
         effects: [
           { type: 'cleanTime', amount: base },
-          { type: 'spendCharges', amount: { kind: 'roomCost' } },
+          { type: 'spendCharges', amount: { kind: 'const', value: 1 } },
           { type: 'leavePending', residual: min(6) },
         ],
       },
@@ -832,7 +832,7 @@ export const situations: SituationDef[] = [
         effects: [
           { type: 'cleanTime', amount: base },
           { type: 'spendCharges', amount: { kind: 'roomCost' } },
-          { type: 'leavePending', residual: min(3) },
+          { type: 'leavePending', residual: min(2) },
         ],
       },
       {
@@ -924,7 +924,7 @@ export const situations: SituationDef[] = [
         effects: [
           { type: 'cleanTime', amount: halfBase },
           { type: 'spendCharges', amount: { kind: 'const', value: 1 } },
-          { type: 'leavePending', residual: residual(3) },
+          { type: 'leavePending', residual: residual(2) },
         ],
       },
       {
@@ -1492,7 +1492,7 @@ export const situations: SituationDef[] = [
         effects: [
           { type: 'cleanTime', amount: base },
           { type: 'spendCharges', amount: { kind: 'roomCost' } },
-          { type: 'leavePending', residual: min(3) },
+          { type: 'leavePending', residual: min(2) },
         ],
       },
       {

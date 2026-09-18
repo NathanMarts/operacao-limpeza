@@ -246,10 +246,23 @@ export function summarizeAction(action: SituationAction, ctx: EffectContext): Ac
         depois.push({
           kind: effect.kind === 'tempo' ? 'tempo' : 'material',
           label: effect.label,
+          /*
+           * "até", e "ambiente" em vez de "sala".
+           *
+           * O abatimento de material é limitado pelo que o ambiente realmente
+           * cobra: `Math.min(buff.amount, gasto)`. Uma sala custa 1 carga, e um
+           * bônus de 2 abate 1 — a carta prometia 2 e entregava metade. O de
+           * tempo é limitado pelos minutos restantes, que quase nunca ficam
+           * abaixo do bônus, então ali o número segue exato.
+           *
+           * E o bônus vale para qualquer ambiente limpável, banheiro e escada
+           * incluídos, não só para salas de aula. Os números continuam vindo do
+           * efeito; nada aqui é fixo.
+           */
           value:
             effect.kind === 'tempo'
-              ? `−${effect.amount} min por sala, nas próximas ${effect.rooms}`
-              : `−${effect.amount} carga por sala, nas próximas ${effect.rooms}`,
+              ? `−${effect.amount} min por ambiente, nos próximos ${effect.rooms}`
+              : `−até ${effect.amount} ${plural(effect.amount, 'carga', 'cargas')} por ambiente, nos próximos ${effect.rooms}`,
         });
         break;
       case 'completeRoom':

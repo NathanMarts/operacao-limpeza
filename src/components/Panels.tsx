@@ -356,14 +356,16 @@ export function BuffPanel({ buffs }: { buffs: ActiveBuff[] }) {
         {buffs.map((buff) => (
           <li key={buff.id} className="flex items-start gap-2.5 text-[13px]">
             <span className="mt-0.5 flex h-5 shrink-0 items-center rounded-md bg-ok/15 px-1.5 text-[11px] font-semibold text-ok">
-              {buff.roomsLeft} {buff.roomsLeft === 1 ? 'sala' : 'salas'}
+              {buff.roomsLeft} {buff.roomsLeft === 1 ? 'ambiente' : 'ambientes'}
             </span>
             <span className="flex-1">
               <span className="text-txt">{buff.label}</span>
               <span className="block text-[12px] text-txt-2">
+                {/* Mesmo motivo da carta: o abatimento de material é
+                    limitado pelo custo do ambiente, então o número é um teto. */}
                 {buff.kind === 'tempo'
-                  ? `−${buff.amount} min por sala`
-                  : `−${buff.amount} carga por sala`}
+                  ? `−${buff.amount} min por ambiente`
+                  : `−até ${buff.amount} ${buff.amount === 1 ? 'carga' : 'cargas'} por ambiente`}
               </span>
             </span>
           </li>
