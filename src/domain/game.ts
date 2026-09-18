@@ -69,6 +69,22 @@ export function remainingObjectives(state: GameState): RoomDef[] {
   return objectives.filter((room) => state.rooms[room.id].status !== 'concluida');
 }
 
+/**
+ * O ambiente em que o trabalhador está parado, se ele estiver dentro de um.
+ *
+ * É a última parada da rota — mas só enquanto ele continuar ali. Efeitos de
+ * `moveTo` (ida ao depósito, volta à entrada) mudam a posição sem abrir parada
+ * nova, então a última parada pode ser um ambiente já deixado para trás. Daí a
+ * confirmação pela posição: ela distingue "ainda aqui" de "já saí".
+ */
+function ambienteAtual(state: GameState): RoomDef | null {
+  const ultima = state.route.at(-1);
+  if (!ultima) return null;
+  const room = roomsById[ultima.roomId];
+  if (!room) return null;
+  return room.corridorPosition === state.currentPosition ? room : null;
+}
+
 export function isSelectable(state: GameState, roomId: string): boolean {
   if (state.phase !== 'mapa') return false;
   const room = roomsById[roomId];
@@ -77,6 +93,24 @@ export function isSelectable(state: GameState, roomId: string): boolean {
   if (room.kind === 'deposito') return true;
   if (!room.cleanable) return false;
   if (state.rooms[roomId].status === 'concluida') return false;
+  /**
+   * Uma volta exige ter saído.
+   *
+   * As cartas que deixam pendência cobram uma viagem de retorno ("na volta
+   * fica X min"), e as que adiam cobram a sujeira acumulada. Só que nada
+   * impedia reabrir o mesmo ambiente no instante seguinte, com deslocamento
+   * zero — e terminar o resíduo não consome material. Medido no catálogo: isso
+   * DOMINAVA a opção de fazer o serviço completo em 4 situações, empatava em
+   * outras 3, e permitia re-sortear a situação pelo preço da sujeira.
+   *
+   * A comparação é por identidade de ambiente, nunca por posição: S1 e S7
+   * dividem a mesma `corridorPosition`, e bloquear por posição impediria
+   * limpar a sala da ala oposta, que é um destino legítimo.
+   *
+   * Não há impasse: o depósito é sempre selecionável, então sair e voltar é
+   * sempre possível — e é exatamente o deslocamento que a carta cobrava.
+   */
+  if (ambienteAtual(state)?.id === roomId) return false;
   return !isBlocked(state, roomId);
 }
 

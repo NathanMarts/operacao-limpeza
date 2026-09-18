@@ -106,6 +106,14 @@ describe('pendência', () => {
     // A confirmação mostra o residual, não o tempo base.
     expect(previewCleaningMinutes(state, 'S2')).toBe(6);
 
+    /* Uma volta exige ter saído: o ambiente incompleto sob os pés não é
+       selecionável. O desvio pelo depósito é a saída sempre disponível, e as
+       cargas são medidas DEPOIS dele — a asserção é sobre o trecho de volta
+       não consumir material, que continua sendo o que importa aqui. */
+    expect(isSelectable(state, 'S2')).toBe(false);
+    state = arriveAt(state, 'DEP-A');
+    expect(isSelectable(state, 'S2')).toBe(true);
+
     const cargasAntes = state.charges;
     const voltando = arriveAt(state, 'S2');
     expect(voltando.phase).toBe('mapa'); // sem nova situação (Q18)
