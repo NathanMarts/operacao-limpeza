@@ -4,10 +4,12 @@ import { duracaoCSS, usePresenca, useReducedMotion } from '../hooks/useMotion';
 import { BuildingMap } from '../components/BuildingMap';
 import { RoomConfirmDialog, SituationDialog } from '../components/Dialogs';
 import { FinalResult } from '../components/FinalResult';
+import { HistoryPanel } from '../components/HistoryPanel';
 import {
   BuffPanel,
   GameHeader,
   Instructions,
+  type GameTab,
   Legend,
   ObjectivePanel,
   SequencePanel,
@@ -22,7 +24,7 @@ import { Icon } from '../components/icons';
 export function Game() {
   const game = useCleaningGame();
   const { theme, toggleTheme } = useTheme();
-  const [tab, setTab] = useState<'mapa' | 'instrucoes'>('mapa');
+  const [tab, setTab] = useState<GameTab>('mapa');
   const [showRoute, setShowRoute] = useState(true);
   /* Mapa expandido: esconde a coluna de apoio e devolve a largura ao desenho. */
   const [expandido, setExpandido] = useState(false);
@@ -72,6 +74,18 @@ export function Game() {
   if (situationView) ultimaSituacao.current = situationView;
   const previewVisivel = preview ?? ultimoPreview.current;
   const situacaoVisivel = situationView ?? ultimaSituacao.current;
+
+  /**
+   * Bloco inteiro limpo encerra o turno sozinho: não há mais o que decidir.
+   * Espera a caminhada e mais um instante, para o último ambiente ficar verde
+   * no mapa antes de o resultado cobrir tudo.
+   */
+  const terminou = state.phase === 'mapa' && game.complete && !caminhando;
+  useEffect(() => {
+    if (!terminou) return;
+    const relogio = setTimeout(actions.finish, reduzido ? 0 : 900);
+    return () => clearTimeout(relogio);
+  }, [terminou, actions.finish, reduzido]);
 
   /* Andar de novo volta a exibir o trecho atual em vez de congelar no passado. */
   useEffect(() => setStepVisivel(null), [state.route.length]);
@@ -173,8 +187,10 @@ export function Game() {
                 onSelect={actions.select}
               />
             </div>
-          ) : (
+          ) : tab === 'instrucoes' ? (
             <Instructions />
+          ) : (
+            <HistoryPanel history={game.history} onClear={actions.clearHistory} />
           )}
 
           {game.needsWait && (
@@ -220,12 +236,6 @@ export function Game() {
               >
                 <Icon.finalizar className="h-[17px] w-[17px]" aria-hidden /> Finalizar limpeza
               </button>
-              {game.complete && (
-                <p className="flex items-center justify-center gap-2 text-[13px] text-ok">
-                  <Icon.concluida className="h-4 w-4" aria-hidden />
-                  Bloco inteiro limpo! Finalize para ver o resultado.
-                </p>
-              )}
             </div>
           </aside>
         )}
@@ -260,11 +270,13 @@ export function Game() {
 
       {state.phase === 'final' && (
         <FinalResult
-          state={state}
           summary={summary}
           history={game.history}
           onRestart={actions.restart}
-          onClearHistory={actions.clearHistory}
+          onShowHistory={() => {
+            actions.restart();
+            setTab('historico');
+          }}
         />
       )}
     </div>

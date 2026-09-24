@@ -181,6 +181,16 @@ export type ActiveSituation = {
   unblockTargetId?: RoomId | null;
 };
 
+/** Uma escolha feita numa carta de situação, guardada para análise posterior. */
+export type DecisionRecord = {
+  roomId: RoomId;
+  situationId: string;
+  actionId: string;
+  /** Minuto do turno e carga do carrinho no momento da escolha, antes dos efeitos. */
+  minute: number;
+  charges: number;
+};
+
 export type Phase = 'mapa' | 'confirmacao' | 'situacao' | 'final';
 
 export type GameState = {
@@ -194,6 +204,7 @@ export type GameState = {
   rooms: Record<RoomId, RoomState>;
   route: RouteStep[];
   log: LogEntry[];
+  decisions: DecisionRecord[];
   /** Destino escolhido, aguardando confirmação. */
   pendingTargetId: RoomId | null;
   situation: ActiveSituation | null;

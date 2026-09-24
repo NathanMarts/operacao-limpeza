@@ -33,5 +33,6 @@ export const gameConfig = {
 
   /** Chave do histórico local de partidas (decisão Q12/L7). */
   historyStorageKey: 'operacao-limpeza:historico:v1',
-  historyMaxEntries: 20,
+  /** Folgado para uma oficina inteira: o histórico é exportado para análise. */
+  historyMaxEntries: 200,
 } as const;

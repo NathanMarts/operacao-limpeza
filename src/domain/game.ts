@@ -40,6 +40,7 @@ export function createInitialState(seed: number = gameConfig.seed): GameState {
     rooms: Object.fromEntries(rooms.map((room) => [room.id, initialRoomState()])),
     route: [],
     log: [],
+    decisions: [],
     pendingTargetId: null,
     situation: null,
     rngState: seed,
@@ -498,6 +499,16 @@ export function chooseAction(state: GameState, actionId: string): GameState {
   next = {
     ...comBuffs.state,
     buffs: [...comBuffs.state.buffs, ...concedidosAgora],
+    decisions: [
+      ...state.decisions,
+      {
+        roomId: room.id,
+        situationId: situation.id,
+        actionId: action.id,
+        minute: currentTotal(state),
+        charges: state.charges,
+      },
+    ],
     phase: 'mapa',
     situation: null,
   };

@@ -141,24 +141,21 @@ describe('renderização dos componentes', () => {
     expect(html).toContain('Escolher');
   });
 
-  it('a tela final reconstrói a rota e seus custos', () => {
+  it('a tela final resume o turno sem repetir o histórico', () => {
     const played = finishShift(playFullGame());
     const summary = summarize(played);
     const html = renderToString(
       createElement(FinalResult, {
-        state: played,
         summary,
         history: [],
         onRestart: () => {},
-        onClearHistory: () => {},
+        onShowHistory: () => {},
       }),
     );
-    expect(html).toContain('Decomposição da partida');
-    expect(html).toContain('Referência espacial mínima');
     expect(html).toContain(formatMeters(summary.distanceTraveled));
-    expect(html).toContain(formatMeters(summary.minimumSweepMeters));
-    // Cada passo do log aparece na tabela.
-    expect(html).toContain(played.log[0].title);
-    expect(html).toContain(played.log.at(-1)!.title);
+    expect(html).toContain(`${summary.concluidas.length}/${summary.totalObjectives}`);
+    expect(html).toContain('Ver histórico');
+    // O passo a passo da partida fica na aba Histórico, não aqui.
+    expect(html).not.toContain(played.log[0].title);
   });
 });

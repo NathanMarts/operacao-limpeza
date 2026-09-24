@@ -1,5 +1,6 @@
 import { gameConfig } from '../data/gameConfig';
 import type { Summary } from './game';
+import type { DecisionRecord } from './types';
 
 export type HistoryEntry = {
   id: string;
@@ -12,6 +13,8 @@ export type HistoryEntry = {
   totalMinutes: number;
   complete: boolean;
   route: string[];
+  /** Ausente em partidas salvas antes de as decisões serem registradas. */
+  decisions?: DecisionRecord[];
 };
 
 /**
@@ -35,7 +38,11 @@ export function loadHistory(): HistoryEntry[] {
   }
 }
 
-export function saveRun(summary: Summary, route: string[]): HistoryEntry[] {
+export function saveRun(
+  summary: Summary,
+  route: string[],
+  decisions: DecisionRecord[],
+): HistoryEntry[] {
   const entry: HistoryEntry = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     playedAt: Date.now(),
@@ -47,6 +54,7 @@ export function saveRun(summary: Summary, route: string[]): HistoryEntry[] {
     totalMinutes: summary.totalMinutes,
     complete: summary.concluidas.length === summary.totalObjectives,
     route,
+    decisions,
   };
   const next = [entry, ...loadHistory()].slice(0, gameConfig.historyMaxEntries);
   try {

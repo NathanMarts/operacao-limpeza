@@ -36,6 +36,8 @@ export function Card({
 /* Cabeçalho: marca, abas e as duas métricas em cards                  */
 /* ------------------------------------------------------------------ */
 
+export type GameTab = 'mapa' | 'instrucoes' | 'historico';
+
 export function GameHeader({
   totalMinutes,
   distance,
@@ -48,8 +50,8 @@ export function GameHeader({
   totalMinutes: number;
   distance: number;
   charges: number;
-  tab: 'mapa' | 'instrucoes';
-  onTab: (next: 'mapa' | 'instrucoes') => void;
+  tab: GameTab;
+  onTab: (next: GameTab) => void;
   theme: 'dark' | 'light';
   onToggleTheme: () => void;
 }) {
@@ -77,6 +79,9 @@ export function GameHeader({
         </Aba>
         <Aba active={tab === 'instrucoes'} onClick={() => onTab('instrucoes')} icon={Icon.instrucoes}>
           Instruções
+        </Aba>
+        <Aba active={tab === 'historico'} onClick={() => onTab('historico')} icon={Icon.historico}>
+          Histórico
         </Aba>
       </nav>
 
@@ -136,7 +141,7 @@ function Aba({
       type="button"
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-6 py-2.5 text-[15px] font-medium transition-colors md:flex-none ${
+      className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[15px] font-medium transition-colors md:flex-none ${
         active ? 'bg-accent-soft text-txt' : 'text-txt-2 hover:text-txt'
       }`}
     >

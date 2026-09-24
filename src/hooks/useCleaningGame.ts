@@ -38,7 +38,9 @@ export function useCleaningGame() {
       const ended = finishShift(current);
       if (!savedRef.current) {
         savedRef.current = true;
-        setHistory(saveRun(summarize(ended), ended.route.map((step) => step.roomId)));
+        setHistory(
+          saveRun(summarize(ended), ended.route.map((step) => step.roomId), ended.decisions),
+        );
       }
       return ended;
     });
