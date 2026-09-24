@@ -6,7 +6,7 @@
  */
 export const gameConfig = {
   /** Semente fixa: todos os participantes recebem o mesmo cenário (decisão Q5). */
-  seed: 20260916,
+  seed: 20260917,
 
   /** Conversão de deslocamento em tempo: 1 minuto a cada N metros (decisão C1). */
   metersPerMinute: 5,

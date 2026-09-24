@@ -85,10 +85,11 @@ describe('regra espacial do corredor', () => {
 
 describe('ida e volta pelo corredor', () => {
   it('acumula o custo da volta: ir longe e retornar cobra os dois trechos', () => {
-    // Entrada(−2) → WC-A(4) → S1(65). Ida 6 m, volta 61 m.
+    // Entrada(−2) → WC-A(4) → S1. Ida 6 m, depois do banheiro até a S1.
+    const s1 = roomsById.S1.corridorPosition;
     const state = walk(['WC-A', 'S1']);
-    expect(state.distanceTraveled).toBe(6 + 61);
-    expect(state.currentPosition).toBe(65);
+    expect(state.distanceTraveled).toBeCloseTo(6 + (s1 - 4));
+    expect(state.currentPosition).toBe(s1);
   });
 
   it('a varredura monotônica gasta exatamente a extensão do corredor', () => {
@@ -111,13 +112,13 @@ describe('ida e volta pelo corredor', () => {
   it('salas opostas compartilham posição: atravessar o corredor não custa nada', () => {
     const state = walk(['S5', 'S11']);
     expect(roomsById['S5'].corridorPosition).toBe(roomsById['S11'].corridorPosition);
-    expect(state.distanceTraveled).toBe(30);
+    expect(state.distanceTraveled).toBeCloseTo(roomsById.S5.corridorPosition + 2);
   });
 
   it('o tempo de deslocamento entra no total separado do tempo de limpeza', () => {
     const state = walk(['WC-A', 'S1']);
     const summary = summarize(state);
-    expect(summary.travelMinutes).toBeCloseTo(travelMinutes(6 + 61));
+    expect(summary.travelMinutes).toBeCloseTo(travelMinutes(6 + (roomsById.S1.corridorPosition - 4)));
     expect(summary.totalMinutes).toBeCloseTo(
       summary.cleaningMinutes + summary.travelMinutes + summary.eventMinutes + summary.idleMinutes,
     );
@@ -131,7 +132,7 @@ describe('ponto de não-retorno', () => {
     expect(selected.distanceTraveled).toBe(0);
 
     const confirmed = confirmTravel(selected);
-    expect(confirmed.distanceTraveled).toBe(20);
+    expect(confirmed.distanceTraveled).toBeCloseTo(roomsById.S6.corridorPosition + 2);
     expect(confirmed.phase).toBe('situacao');
   });
 

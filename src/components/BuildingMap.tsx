@@ -12,6 +12,8 @@ import {
 import { formatMeters, formatMinutes } from '../domain/effects';
 import { modificadorDaSala, nomesDasSalas } from '../domain/mapa';
 import enceradeiraIcone from '../assets/enceradeira-mapa.png';
+import materiaisIcone from '../assets/materiais-mapa.png';
+import pisoCorredor from '../assets/piso-corredor-mapa.jpg';
 import { precisaSairParaVoltar } from '../domain/game';
 import { distanceBetween, travelMinutes } from '../domain/movement';
 import type { GameState, LogEntry } from '../domain/types';
@@ -19,9 +21,9 @@ import { PlayerPin } from './PlayerPin';
 import { Room, type RoomGeometry, type RoomVisualState } from './Room';
 
 /* Escala do desenho: metros → pixels. Mexer nos dados move o mapa junto. */
-const PX_PER_METER = 11;
+const PX_PER_METER = 12;
 const MARGIN_X = 24;
-const MARGIN_Y = 20;
+const MARGIN_Y = 28;
 const CORRIDOR_HEIGHT = 52;
 /** Altura em pixels de um ambiente de profundidade 1 nos dados. */
 const ROOM_DEPTH = 120;
@@ -349,6 +351,8 @@ type Props = {
   cleaningMinutesFor: (roomId: string) => number;
   minutesUntilFree: (roomId: string) => number;
   onSelect: (roomId: string) => void;
+  /** Caber inteiro na caixa (altura e largura), como no mapa expandido. */
+  preencher?: boolean;
   /** O trabalhador está atravessando o corredor agora. */
   caminhando?: boolean;
   /** Última entrada do log, de onde saem os deltas da decisão. */
@@ -356,6 +360,7 @@ type Props = {
 };
 
 export function BuildingMap({
+  preencher = false,
   state,
   totalMinutes,
   showRoute,
@@ -475,11 +480,19 @@ export function BuildingMap({
   return (
     <svg
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-      className="h-auto w-full select-none"
+      className={`select-none ${preencher ? 'h-full w-full' : 'h-auto w-full'}`}
       role="img"
       aria-label="Planta do bloco: corredor central com ambientes dos dois lados"
     >
       <defs>
+        {/* Sombra projetada do prédio, por fora da planta. */}
+        <filter id="sombra-predio" x="-10%" y="-20%" width="120%" height="150%">
+          <feGaussianBlur stdDeviation="7" />
+        </filter>
+        {/* Granitina do corredor: textura repetida, discreta sob a régua. */}
+        <pattern id="piso-corredor" width="72" height="72" patternUnits="userSpaceOnUse">
+          <image href={pisoCorredor} width="72" height="72" pointerEvents="none" />
+        </pattern>
         <pattern id="hachura-pendente" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
           <line x1="0" y1="0" x2="0" y2="8" stroke="#b9750a" strokeWidth="2.5" opacity="0.35" />
         </pattern>
@@ -491,15 +504,30 @@ export function BuildingMap({
         </pattern>
       </defs>
 
+      {/* ---- Sombra do prédio ----
+          A silhueta (salas e corredor) desfocada e deslocada para baixo, por
+          trás de tudo: descola a planta do fundo, como num mapa de jogo. */}
+      <g filter="url(#sombra-predio)" opacity={0.55} transform="translate(0 8)" pointerEvents="none">
+        <rect
+          x={CORRIDOR_X1}
+          y={CENTER_Y - CORRIDOR_HEIGHT / 2}
+          width={CORRIDOR_X2 - CORRIDOR_X1}
+          height={CORRIDOR_HEIGHT}
+          fill="#000000"
+        />
+        {rooms.map((room) => {
+          const g = geometryFor(room);
+          return <rect key={room.id} x={g.x - 3} y={g.y - 3} width={g.width + 6} height={g.height + 6} fill="#000000" />;
+        })}
+      </g>
+
       {/* ---- Corredor: faixa cinza clara, a única rota do bloco ---- */}
       <rect
         x={CORRIDOR_X1}
         y={CENTER_Y - CORRIDOR_HEIGHT / 2}
         width={CORRIDOR_X2 - CORRIDOR_X1}
         height={CORRIDOR_HEIGHT}
-        fill="#d5d4d4"
-        stroke="#1e1e1e"
-        strokeWidth={1.75}
+        fill="url(#piso-corredor)"
       />
 
       {/* ---- Ambientes ---- */}
@@ -641,10 +669,9 @@ export function BuildingMap({
         const x = xDaPosicao(stash.position);
         return (
           <g key={stash.id} pointerEvents="none" aria-label={`${stash.label}: ${stash.charges} cargas no corredor`}>
-            <rect x={x - 10} y={CENTER_Y - 24} width={20} height={14} rx={2} fill="#f0b429" stroke="#6b4a00" strokeWidth={1} />
-            <line x1={x - 10} x2={x + 10} y1={CENTER_Y - 19.5} y2={CENTER_Y - 19.5} stroke="#6b4a00" strokeWidth={1} />
-            <rect x={x + 12} y={CENTER_Y - 24} width={22} height={14} rx={7} fill="#0b1220" opacity={0.9} />
-            <text x={x + 23} y={CENTER_Y - 14} textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="9" fontWeight="800" fill="#f0b429">
+            <image href={materiaisIcone} x={x - 63} y={CENTER_Y - 32} width={26} height={26} pointerEvents="none" />
+            <rect x={x + -60} y={CENTER_Y - 46} width={22} height={14} rx={7} fill="#0b1220" opacity={0.9} />
+            <text x={x + -50} y={CENTER_Y - 36} textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="9" fontWeight="800" fill="#f0b429">
               {`+${stash.charges}`}
             </text>
           </g>

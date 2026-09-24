@@ -45,6 +45,13 @@ export type RoomDef = {
   nestedIn?: RoomId;
   /** A caixa de escada atravessa o corredor, em vez de ficar de um lado só. */
   straddlesCorridor?: boolean;
+  /**
+   * Só desenho: o ambiente é, na planta real, duas salas (ex.: o PET junto ao
+   * corredor e a sala dos professores atrás). É a fração da profundidade, a
+   * partir do corredor, em que fica a parede interna. No jogo continua sendo
+   * um objetivo só.
+   */
+  subdivisao?: number;
 };
 
 export type RoomStatus = 'nao-iniciada' | 'pendente' | 'concluida';

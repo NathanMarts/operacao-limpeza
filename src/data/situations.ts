@@ -232,7 +232,7 @@ export const situations: SituationDef[] = [
         description: 'Alguém vem do depósito buscar o lixo: a espera depende da distância.',
         requires: [precisa(R)],
         effects: [
-          { type: 'eventTime', amount: { kind: 'sum', terms: [distancia('deposito'), min(1)] } },
+          { type: 'eventTime', amount: distancia('deposito') },
           ...conclui(base, R),
         ],
       },
@@ -355,10 +355,10 @@ export const situations: SituationDef[] = [
       {
         id: 'equipe-desmonta',
         label: 'Chamar a equipe do evento',
-        description: 'Desmontam aqui e na frente: −2 min em cada; as duas fecham 12 min.',
+        description: 'Desmontam: −1 min aqui e −2 na frente; as duas fecham 12 min.',
         requires: [],
         effects: [
-          { type: 'leavePending', residual: baseMenos(2) },
+          { type: 'leavePending', residual: baseMenos(1) },
           { type: 'blockRoom', target: 'self', minutes: 12 },
           { type: 'modifyRooms', target: { kind: 'frente' }, minutes: -2, label: 'Par desmontado' },
           { type: 'blockRooms', target: { kind: 'frente' }, minutes: 12 },
@@ -807,7 +807,7 @@ export const situations: SituationDef[] = [
           { type: 'eventTime', amount: min(1) },
           { type: 'spendCharges', amount: { kind: 'roomCost' } },
           { type: 'completeRoom' },
-          { type: 'blockRooms', target: { kind: 'raio', meters: 6.5 }, minutes: 12 },
+          { type: 'blockRooms', target: { kind: 'raio', meters: 7 }, minutes: 12 },
         ],
       },
       {
@@ -1369,7 +1369,7 @@ export const situations: SituationDef[] = [
             label: 'Promessa à direção',
             target: { kind: 'pendencias' },
             minutes: 20,
-            recompensa: { target: { kind: 'maisDistante' }, label: 'Colega da direção' },
+            recompensa: { target: { kind: 'maisDistante' }, label: 'um colega da direção limpa a sala mais distante' },
             penalidade: 3,
             penalidadePorSala: true,
           },
@@ -1412,7 +1412,7 @@ export const situations: SituationDef[] = [
       {
         id: 'largar-e-ir',
         label: 'Largar tudo e ir para lá',
-        description: 'Esta sala espera. Reunião pronta a tempo: alguém faz esta por você.',
+        description: 'Deixa esta; se a sala da reunião ficar pronta a tempo, limpam esta.',
         requires: [{ type: 'regiaoComAlvo', target: { kind: 'maisDistante' } }],
         effects: [
           { type: 'leaveUnstarted' },
@@ -1421,7 +1421,7 @@ export const situations: SituationDef[] = [
             label: 'Sala da reunião',
             target: { kind: 'maisDistante' },
             minutes: 30,
-            recompensa: { target: 'origem', label: 'A coordenação' },
+            recompensa: { target: 'origem', label: 'a coordenação limpa esta sala' },
             penalidade: 5,
           },
         ],

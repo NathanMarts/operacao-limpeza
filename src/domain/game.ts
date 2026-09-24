@@ -452,7 +452,7 @@ function avaliarMetas(state: GameState): GameState {
         roomId: null,
         title: `${meta.label}: cumprida`,
         detail: meta.recompensa && alvos.length
-          ? `${meta.recompensa.label}: ${nomesDasSalas(alvos)} pronta no minuto ${formatMinutes(agora + MINUTOS_DA_RECOMPENSA)}`
+          ? `A tempo: ${meta.recompensa.label} (${nomesDasSalas(alvos)}, pronta no minuto ${formatMinutes(agora + MINUTOS_DA_RECOMPENSA)})`
           : 'Salas prontas a tempo',
         deltaDistance: 0,
         deltaCleaning: 0,

@@ -8,6 +8,7 @@ import { HistoryPanel } from '../components/HistoryPanel';
 import {
   BuffPanel,
   GameHeader,
+  MetricasTurno,
   Instructions,
   MapPanel,
   type GameTab,
@@ -140,6 +141,9 @@ export function Game() {
 
   return (
     <div className="min-h-screen bg-bg">
+      {/* Com o mapa expandido, o cabeçalho sai de cena: os números do turno
+          sobem para a faixa de cima do mapa. */}
+      {!(expandido && tab === 'mapa') && (
       <GameHeader
         totalMinutes={game.totalMinutes}
         distance={state.distanceTraveled}
@@ -149,6 +153,7 @@ export function Game() {
         theme={theme}
         onToggleTheme={toggleTheme}
       />
+      )}
 
       <main
         className={`mx-auto grid items-start gap-4 p-4 lg:p-5 ${
@@ -166,13 +171,105 @@ export function Game() {
 
         {/* Centro */}
         <section className="min-w-0">
-          {tab === 'mapa' ? (
-            <div
-              className={`relative overflow-hidden rounded-xl border border-line bg-map-bg p-4 ${
-                /* Expandido, a faixa de baixo guarda os botões e alertas sem cobrir o desenho. */
-                expandido ? 'pb-20' : ''
-              }`}
-            >
+          {tab === 'mapa' && expandido ? (
+            /* Mapa expandido: ocupa a tela inteira sem rolar. Os números do
+               turno sobem para a faixa de cima (o cabeçalho sai de cena), o
+               desenho cabe na altura que sobra, e o que era sobreposto ("No
+               mapa", vantagens, botões) vai para uma coluna ao lado, sem
+               cobrir sala nenhuma. */
+            <div className="flex h-[calc(100dvh-2rem)] flex-col gap-3 rounded-xl border border-line bg-map-bg p-4 lg:h-[calc(100dvh-2.5rem)]">
+              <div className="flex flex-wrap items-center gap-3">
+                <MetricasTurno totalMinutes={game.totalMinutes} distance={state.distanceTraveled} charges={state.charges} />
+                <div className="ml-auto flex items-center gap-2">
+                  <label className="flex cursor-pointer select-none items-center gap-2 rounded-lg border border-line bg-panel px-3 py-1.5 text-[12.5px] text-txt-2">
+                    <input
+                      type="checkbox"
+                      checked={showRoute}
+                      onChange={(event) => setShowRoute(event.target.checked)}
+                      className="h-3.5 w-3.5 accent-[var(--color-accent)]"
+                    />
+                    Trajeto
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setExpandido((atual) => !atual)}
+                    aria-pressed={expandido}
+                    title={expandido ? 'Voltar ao layout completo' : 'Expandir o mapa'}
+                    className="flex items-center gap-2 rounded-lg border border-line bg-panel px-3 py-1.5 text-[12.5px] text-txt-2 transition-colors hover:bg-btn hover:text-txt"
+                  >
+                    {expandido ? (
+                      <Icon.recolher className="h-[15px] w-[15px]" aria-hidden />
+                    ) : (
+                      <Icon.expandir className="h-[15px] w-[15px]" aria-hidden />
+                    )}
+                    {expandido ? 'Recolher' : 'Expandir'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex min-h-0 flex-1 gap-4">
+                <div className="min-w-0 flex-1">
+                  <BuildingMap
+                    state={state}
+                    totalMinutes={game.totalMinutes}
+                    showRoute={showRoute}
+                    selectedStep={stepVisivel}
+                    caminhando={caminhando}
+                    ultimoLog={state.log.at(-1) ?? null}
+                    cleaningMinutesFor={(roomId) => previewCleaningMinutes(state, roomId)}
+                    minutesUntilFree={game.minutesUntilFree}
+                    onSelect={actions.select}
+                    preencher
+                  />
+                </div>
+                <aside className="flex w-64 shrink-0 flex-col gap-3 overflow-y-auto">
+                  <MapPanel state={state} />
+                  <BuffPanel buffs={state.buffs} />
+                  <div className="mt-auto space-y-2">
+                    <button
+                      type="button"
+                      onClick={actions.restart}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-line bg-panel py-2 text-[13px] font-medium text-txt transition-colors hover:bg-btn"
+                    >
+                      <Icon.reiniciar className="h-[15px] w-[15px]" aria-hidden /> Reiniciar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={actions.finish}
+                      disabled={state.route.length === 0}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-line bg-btn py-2 text-[13px] font-medium text-txt transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:text-txt-3 disabled:hover:bg-btn"
+                    >
+                      <Icon.finalizar className="h-[15px] w-[15px]" aria-hidden /> Finalizar limpeza
+                    </button>
+                  </div>
+                </aside>
+              </div>
+
+              {(game.precisaSair || game.needsWait) && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {game.precisaSair && (
+                    <AvisoSaiaEVolte sala={game.precisaSair} compacto onClick={actions.sairEVoltar} />
+                  )}
+                  {game.needsWait && (
+                    <div className="flex min-w-0 items-center gap-3 rounded-lg border border-warn/50 bg-panel px-3.5 py-2">
+                      <Icon.bloqueada className="h-4 w-4 shrink-0 text-warn" aria-hidden />
+                      <p className="min-w-0 text-[12.5px] text-txt">
+                        Não há para onde ir agora: o que falta (e o depósito) está fechado.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={actions.wait}
+                        className="shrink-0 rounded-md bg-warn px-3 py-1.5 text-[12.5px] font-semibold text-warn-ink transition-opacity hover:opacity-90"
+                      >
+                        Aguardar no corredor
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : tab === 'mapa' ? (
+            <div className="relative overflow-hidden rounded-xl border border-line bg-map-bg p-4">
               <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
                 <label className="flex cursor-pointer select-none items-center gap-2 rounded-lg border border-line bg-panel px-3 py-1.5 text-[12.5px] text-txt-2">
                   <input
@@ -198,67 +295,6 @@ export function Game() {
                   {expandido ? 'Recolher' : 'Expandir'}
                 </button>
               </div>
-
-              {/*
-                Com o mapa expandido a coluna da direita sai de cena e levaria
-                as vantagens em vigor com ela — justamente o dado que explica
-                por que uma limpeza não cobrou carga. O abatimento só existe no
-                log, e o log só aparece na tela final, então sem isto o bônus
-                fica invisível durante a partida inteira.
-
-                Sobreposto, não no fluxo: em cima do mapa ele empurrava o
-                desenho para baixo a cada vantagem ganha. Aqui mora na mesma
-                faixa de cima que já é dos controles, e o desenho não se move.
-              */}
-              {expandido && (
-                <div className="absolute left-4 top-4 z-10 w-[250px] space-y-3">
-                  <MapPanel state={state} />
-                  <BuffPanel buffs={state.buffs} />
-                </div>
-              )}
-
-              {/* Mapa expandido: as colunas saem de cena, e Reiniciar e
-                  Finalizar vêm junto, no canto inferior direito do mapa. */}
-              {expandido && (
-                <div className="absolute inset-x-4 bottom-8 z-10 flex items-end justify-end gap-2">
-                  {/* Os alertas que ficariam abaixo do mapa sobem para esta
-                      faixa, ao lado dos botões: expandido, o que está abaixo
-                      do mapa sai da tela. */}
-                  {game.precisaSair && (
-                    <AvisoSaiaEVolte sala={game.precisaSair} compacto onClick={actions.sairEVoltar} />
-                  )}
-                  {game.needsWait && (
-                    <div className="mr-auto flex min-w-0 items-center gap-3 rounded-lg border border-warn/50 bg-panel px-3.5 py-2 shadow-lg">
-                      <Icon.bloqueada className="h-4 w-4 shrink-0 text-warn" aria-hidden />
-                      <p className="min-w-0 text-[12.5px] text-txt">
-                        Não há para onde ir agora: o que falta (e o depósito) está fechado.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={actions.wait}
-                        className="shrink-0 rounded-md bg-warn px-3 py-1.5 text-[12.5px] font-semibold text-warn-ink transition-opacity hover:opacity-90"
-                      >
-                        Aguardar no corredor
-                      </button>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={actions.restart}
-                    className="flex items-center gap-2 rounded-lg border border-line bg-panel px-3.5 py-2 text-[13px] font-medium text-txt shadow-lg transition-colors hover:bg-btn"
-                  >
-                    <Icon.reiniciar className="h-[15px] w-[15px]" aria-hidden /> Reiniciar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={actions.finish}
-                    disabled={state.route.length === 0}
-                    className="flex items-center gap-2 rounded-lg border border-line bg-btn px-3.5 py-2 text-[13px] font-medium text-txt shadow-lg transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:text-txt-3 disabled:hover:bg-btn"
-                  >
-                    <Icon.finalizar className="h-[15px] w-[15px]" aria-hidden /> Finalizar limpeza
-                  </button>
-                </div>
-              )}
 
               <BuildingMap
                 state={state}

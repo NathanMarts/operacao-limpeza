@@ -26,8 +26,9 @@ describe('geometria da planta', () => {
         const anterior = ordenadas[i - 1];
         const atual = ordenadas[i];
         const fimAnterior = anterior.spanStartMeters + anterior.spanWidthMeters;
+        // Tolerância de arredondamento: 17,8 + 6,4 vira 24,200000000000003.
         expect(atual.spanStartMeters, `${anterior.id} invade ${atual.id}`).toBeGreaterThanOrEqual(
-          fimAnterior,
+          fimAnterior - 1e-9,
         );
       }
     }

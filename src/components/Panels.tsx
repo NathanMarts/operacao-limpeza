@@ -60,11 +60,6 @@ export function GameHeader({
   onToggleTheme: () => void;
 }) {
   const indoParaClaro = theme === 'dark';
-  /* Contadores no topo: hooks fora do JSX, para a ordem nunca depender de
-     renderização condicional. */
-  const tempoExibido = useCountUp(totalMinutes);
-  const distanciaExibida = useCountUp(distance, 1);
-  const cargasExibidas = useCountUp(charges, 1);
   return (
     <header className="flex flex-wrap items-center gap-4 bg-header px-5 py-3.5 sm:px-6">
       <div className="flex items-center gap-3.5">
@@ -92,27 +87,7 @@ export function GameHeader({
       </nav>
 
       <div className="ml-auto flex flex-wrap gap-3">
-        {/* Os três números andam do valor anterior até o novo: o relógio do
-            turno, os metros caminhados e as cargas do carrinho viram registro
-            do trabalho feito, em vez de saltarem sem aviso. */}
-        <MetricCard
-          icon={Icon.tempo}
-          label="Tempo total"
-          value={`${formatMinutes(tempoExibido)} min`}
-          detalhe={`próximo sinal: minuto ${minutoDoSinal(totalMinutes)}`}
-        />
-        <MetricCard
-          icon={Icon.distancia}
-          label="Distância percorrida"
-          value={`${formatMeters(distanciaExibida)} m`}
-        />
-        <MetricCard
-          icon={Icon.material}
-          label="Material"
-          value={`${Math.round(cargasExibidas)}/${gameConfig.maxCharges}`}
-          alert={charges === 0}
-          atencao={charges > 0 && charges <= 3}
-        />
+        <MetricasTurno totalMinutes={totalMinutes} distance={distance} charges={charges} />
         <button
           type="button"
           onClick={onToggleTheme}
@@ -129,6 +104,48 @@ export function GameHeader({
         </button>
       </div>
     </header>
+  );
+}
+
+/**
+ * Os três números do turno. Andam do valor anterior até o novo: o relógio, os
+ * metros caminhados e as cargas do carrinho viram registro do trabalho feito,
+ * em vez de saltarem sem aviso. Ficam no cabeçalho e, com o mapa expandido,
+ * na faixa de cima do mapa.
+ */
+export function MetricasTurno({
+  totalMinutes,
+  distance,
+  charges,
+}: {
+  totalMinutes: number;
+  distance: number;
+  charges: number;
+}) {
+  const tempoExibido = useCountUp(totalMinutes);
+  const distanciaExibida = useCountUp(distance, 1);
+  const cargasExibidas = useCountUp(charges, 1);
+  return (
+    <>
+      <MetricCard
+        icon={Icon.tempo}
+        label="Tempo total"
+        value={`${formatMinutes(tempoExibido)} min`}
+        detalhe={`próximo sinal: minuto ${minutoDoSinal(totalMinutes)}`}
+      />
+      <MetricCard
+        icon={Icon.distancia}
+        label="Distância percorrida"
+        value={`${formatMeters(distanciaExibida)} m`}
+      />
+      <MetricCard
+        icon={Icon.material}
+        label="Material"
+        value={`${Math.round(cargasExibidas)}/${gameConfig.maxCharges}`}
+        alert={charges === 0}
+        atencao={charges > 0 && charges <= 3}
+      />
+    </>
   );
 }
 

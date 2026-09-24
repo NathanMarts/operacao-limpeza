@@ -102,12 +102,12 @@ describe('renderização dos componentes', () => {
     for (const room of objectives) {
       expect(html).toContain(room.name);
     }
-    // A planta desenhada, não uma imagem clicável.
-    expect(html).not.toContain('<image');
+    // A planta é desenhada; ilustração dentro de sala é só decoração, sem clique.
+    expect(html).not.toMatch(/<image(?![^>]*pointer-events="none")/);
     // Marco zero (o quadrado do início, a leste) e cotas de cada trecho.
     expect(html).toContain('INÍCIO');
-    expect(html).toContain('10m');
-    expect(html).toContain('7m');
+    expect(html).toContain('14,8m');
+    expect(html).toContain('11,5m');
   });
 
   it('o modal de situação mostra as três cartas com seus efeitos', () => {

@@ -99,8 +99,9 @@ Os números do redesign eram pontos de partida. Três rodadas de simulação mex
 
 | # | Situação | Aprovado | Implementado | Por quê |
 |--:|---|---|---|---|
+| 4 | Lixeiras | Coleta pelo rádio: distância + 1 min | Só a distância | Compactar vencia 73% depois da mudança da planta (seção 9) |
 | 6 | Equipamento | Improvisar B+4 | B+3 | O remendo vencia 73% |
-| 7 | Sala usada em evento | Equipe: −3 min cada, fecha 10 | −2 cada, fecha 12 | A equipe vencia 75% |
+| 7 | Sala usada em evento | Equipe: −3 min cada, fecha 10 | −1 aqui e −2 na frente, fecha 12 | A equipe vencia 75%, e 71% depois da mudança da planta |
 | 8 | Janela aberta | Secando: sobra 1 min | Sobra 3 min | Deixar secar vencia 76% |
 | 9 | Turma organizada | Deixar com a turma: material da sala | Material da sala +1 | Vencia 73%: a sala sumia da rota de graça |
 | 11 | Vaso entupido | Chamar: 1 min, pronto em 25 | 5 min e o material do banheiro, pronto em 50 | Chamar vencia 80% (a volta ao banheiro sai quase de graça por causa do depósito ao lado) |
@@ -168,3 +169,64 @@ pnpm exec vite-node scripts/playtest.ts 300 "" partidas          # partidas comp
 ```
 
 As ondas também rodam separadas: `a`, `b`, `c`, `d`, e `todas` roda as 32.
+
+## 9. Mudança na planta: S3/S4 e S9/S10
+
+Ajuste pedido depois da primeira rodada, para o mapa bater com a faculdade real:
+- **S3, S4, S9 e S10 têm o mesmo tamanho** (6,5 m cada no desenho).
+- **As portas ficam coladas na parede que divide cada par:** a da S3/S9 no canto direito, a da S4/S10 no esquerdo. No jogo, a S3/S9 passou de 45 m para **42,5 m** da entrada, e a S4/S10 de 38 m para **40,5 m**.
+
+**O que isso muda nas distâncias:**
+- S3 ↔ S4: de 7 m para 2 m;
+- S2 ↔ S3: de 10 m para 12,5 m;
+- S4 ↔ S5: de 10 m para 12,5 m;
+- a caixa "no meio do corredor" acompanha a S4/S10 (40,5 m);
+- o raio de 10 m a partir da S3 não alcança mais S2/S8;
+- o comprimento total do corredor e a varredura mínima não mudam.
+
+**Simulação depois da mudança:**
+- **Fase 1:** as 8 continuam dentro do critério (a mais alta com 60%).
+- **Partidas completas:** 300, nenhuma travada, mediana de 116 min.
+- **Fase 2:** duas cartas passaram raspando do limite e ganharam um ajuste mínimo (tabela da seção 3):
+  - Lixeiras: de 73% para 63%;
+  - Sala usada em evento: de 71% para 65%.
+
+As outras tabelas deste relatório são da rodada anterior à mudança.
+
+
+### S5/S11 e S6/S12: porta no centro
+
+Em seguida, as portas de S5/S11 e S6/S12 foram padronizadas no centro da parede do corredor, como na planta real:
+- S5/S11 passou de 28 m para **28,5 m** da entrada;
+- S6/S12 passou de 18 m para **15,9 m**, 2,1 m mais perto do depósito.
+
+**Simulação depois da mudança:** as 32 cartas continuam dentro do critério (a mais alta com 69%). Nas 300 partidas completas, nenhuma travou, e a mediana foi de 115 min.
+
+### Proporções da planta do Bloco Multimídia
+
+Com a planta completa da faculdade, o mapa passou a seguir as proporções reais:
+
+| Trecho | Antes | Agora |
+|---|---|---|
+| S1/S7 (PET e sala dos professores, com o corredorzinho) | 8 m | 6,3 m |
+| S2/S8 (sala grande) | 14 m, porta no meio | 11,5 m, porta no canto junto à S3/S9 |
+| S5/S11 e S6/S12 | 13 m e 12,2 m | 14,7 m e 14,8 m (porta no centro, como pedido) |
+| Profundidade do bloco da ponta (S1/S2/S7/S8) | 1,3× | 1,7× a das outras salas |
+
+- **S1/S7** é, na planta real, um bloco com duas salas: o **PET**, junto ao corredor, e a **sala dos professores**, atrás. Entra-se por um corredorzinho da largura da porta, colado na parede da S2/S8. No jogo continua sendo **um objetivo só** (5 min, 1 carga).
+- **Posição das portas** (metros a partir da entrada):
+  - S1/S7: 64,5;
+  - S2/S8: 53;
+  - S3/S9: 46,8;
+  - S4/S10: 44,8;
+  - S5/S11: 32;
+  - S6/S12: 17,2.
+- **Trechos da régua:** escada ↔ S1 7 m; S1 ↔ S2 11,5 m; S2 ↔ S3 6,2 m; S3 ↔ S4 2 m; S4 ↔ S5 12,8 m; S5 ↔ S6 14,8 m; S6 ↔ depósito 9,2 m.
+- **Ajuste de carta:** os cavaletes do Fluxo na escada passaram a ter raio de 7 m, para continuar fechando S1 e S7, como a carta diz.
+- **Pontos do corredor:** o "meio" (onde a manutenção deixa o carrinho) acompanha a S4/S10, e o "fundo" (caixas da Entrega, enceradeira) acompanha a S2/S8.
+- **Testes:** os que tinham distâncias fixas agora calculam a partir das posições da planta, para não quebrar no próximo ajuste.
+
+**Simulação depois da mudança:**
+- **Fase 1:** as 8 continuam dentro do critério (a mais alta com 63%).
+- **Fase 2:** a mais alta ficou em 70%, no limite. "Buscar na caixa do corredor" (Acabou papel e sabonete) saiu com 0% nesta rodada. Ela só aparece quando existe uma caixa no mapa, e a caixa do "meio" ficou mais longe dos banheiros. É a ação mais situacional do catálogo; vale observar no playtest humano.
+- **Partidas completas:** 300, nenhuma travada, mediana de 116 min.

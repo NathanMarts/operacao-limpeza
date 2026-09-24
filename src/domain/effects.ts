@@ -323,10 +323,16 @@ function textoAposta(effect: Extract<Effect, { type: 'aposta' }>): string {
 function textoMeta(effect: Extract<Effect, { type: 'addMeta' }>, ctx: EffectContext): string {
   const alvos = alvosDe(effect.target, ctx) || REGIAO_GENERICA[effect.target.kind].toLowerCase();
   const prazo = ctx.game ? `até o minuto ${formatMinutes(totalMinutes(ctx.game) + effect.minutes)}` : `em ${effect.minutes} min`;
-  const premio = effect.recompensa ? `; a tempo: ${effect.recompensa.label}` : '';
-  const multa = effect.penalidadePorSala ? `+${effect.penalidade} min em cada uma` : `+${effect.penalidade} min lá`;
-  const prontas = quantosAlvos(effect.target, ctx) > 1 ? 'prontas' : 'pronta';
-  return `${alvos} ${prontas} ${prazo}${premio}; atrasou: ${multa}`;
+  const varias = quantosAlvos(effect.target, ctx) > 1;
+  const premio = effect.recompensa ? ` A tempo: ${effect.recompensa.label}.` : '';
+  const multa = varias ? `+${effect.penalidade} min em cada uma` : `+${effect.penalidade} min lá`;
+  const sujeito =
+    effect.target.kind === 'pendencias'
+      ? varias
+        ? `Suas pendências (${alvos})`
+        : `Sua pendência (${alvos})`
+      : `${effect.label} (${alvos})`;
+  return `${sujeito} ${varias ? 'prontas' : 'pronta'} ${prazo}.${premio} Atrasou: ${multa}.`;
 }
 
 /** Expressão de tempo em termos soltos, para explicar cada parcela na carta. */
@@ -583,13 +589,22 @@ export function summarizeAction(action: SituationAction, ctx: EffectContext): Ac
           value: `${evalTime(effect.residual, ctx)} min quando voltar aqui`,
         });
         break;
-      case 'leaveUnstarted':
+      case 'leaveUnstarted': {
+        /* Se a ação promete que alguém faz esta sala (a meta da coordenação),
+           a carta diz os dois desfechos, e não só "espera você". */
+        const quemFaz = action.effects.find(
+          (e): e is Extract<Effect, { type: 'addMeta' }> =>
+            e.type === 'addMeta' && e.recompensa?.target === 'origem',
+        );
         depois.push({
           kind: 'intocada',
           label: 'Sala adiada',
-          value: 'a mesma situação espera você na volta',
+          value: quemFaz?.recompensa
+            ? `fica para depois; se você cumprir o prazo, ${quemFaz.recompensa.label}`
+            : 'a mesma situação espera você na volta',
         });
         break;
+      }
       case 'blockRooms':
         if (semAlvo(effect.target, ctx)) break;
         depois.push({ kind: 'bloqueio', label: 'Salas fechadas', value: textoBloqueioRegional(effect, ctx) });

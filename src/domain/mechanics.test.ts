@@ -44,7 +44,7 @@ describe('material e depósito', () => {
   });
 
   it('passar pelo depósito durante outro deslocamento NÃO reabastece', () => {
-    // S6(18) → WC-A(4) passa por cima do depósito, em 8.
+    // S6 → WC-A(4) passa por cima do depósito, em 8.
     let state = createInitialState();
     state = chooseAction(forceSituation(state, 'S6', 'teste-generica'), 'racionar');
     const antes = state.charges;
@@ -67,18 +67,18 @@ describe('material e depósito', () => {
     state = arriveAt(state, 'DEP-A');
     expect(state.charges).toBe(gameConfig.maxCharges);
     expect(state.eventMinutes - eventosAntes).toBe(gameConfig.refillMinutes);
-    expect(state.distanceTraveled - distanciaAntes).toBe(57); // 65 → 8
+    expect(state.distanceTraveled - distanciaAntes).toBeCloseTo(roomsById.S1.corridorPosition - 8); // S1 → depósito
     expect(state.phase).toBe('mapa'); // depósito não abre situação
   });
 
   it('parar no depósito no meio de uma varredura monotônica custa 0 m extras', () => {
-    // S6(18) → DEP(8) → WC-A(4) percorre os mesmos 14 m de S6 → WC-A.
+    // S6 → DEP(8) → WC-A(4) percorre os mesmos metros de S6 → WC-A.
     let comParada = createInitialState();
     comParada = chooseAction(forceSituation(comParada, 'S6', 'teste-generica'), 'racionar');
     const base = comParada.distanceTraveled;
     comParada = arriveAt(comParada, 'DEP-A');
     comParada = arriveAt(comParada, 'WC-A');
-    expect(comParada.distanceTraveled - base).toBe(14);
+    expect(comParada.distanceTraveled - base).toBeCloseTo(roomsById.S6.corridorPosition - 4);
   });
 
   it('sem cargas suficientes a limpeza completa fica indisponível, mas a situação sempre tem saída', () => {
@@ -133,10 +133,10 @@ describe('pendência', () => {
   it('a volta para resolver a pendência cobra deslocamento de verdade', () => {
     let state = createInitialState();
     state = chooseAction(forceSituation(state, 'S2', 'teste-generica'), 'limpeza-seca'); // 15 m
-    state = chooseAction(forceSituation(state, 'WC-A', 'teste-generica'), 'racionar'); // +51 m
+    state = chooseAction(forceSituation(state, 'WC-A', 'teste-generica'), 'racionar'); // volta até o banheiro
     const antes = state.distanceTraveled;
-    state = arriveAt(state, 'S2'); // volta 51 m
-    expect(state.distanceTraveled - antes).toBe(51);
+    state = arriveAt(state, 'S2'); // e de volta à S2
+    expect(state.distanceTraveled - antes).toBeCloseTo(roomsById.S2.corridorPosition - 4);
   });
 
   it('adiar acumula sujeira: a sala fica mais cara na próxima visita', () => {

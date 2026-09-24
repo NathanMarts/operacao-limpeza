@@ -218,7 +218,7 @@ describe('material no ponto atual', () => {
   it('a caixa deixada aqui não volta ao carrinho no primeiro passo, só quando você passar de novo', () => {
     let s = chooseAction(em(createInitialState(), 'S4', 'evento-cancelado'), 'guardar-material');
     expect(s.stashes).toHaveLength(1);
-    expect(s.stashes[0].position).toBe(38);
+    expect(s.stashes[0].position).toBe(roomsById.S4.corridorPosition);
     s = limpar(s, 'S2'); // sai de S4 para o fundo
     expect(s.stashes).toHaveLength(1);
     s = limpar(s, 'S6'); // volta passando por S4: recolhe o que cabe no carrinho

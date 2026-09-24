@@ -64,35 +64,45 @@ export const rooms: RoomDef[] = [
   },
 
   // ----- Ala superior -------------------------------------------------
+  /* Proporções da planta do Bloco Multimídia: o bloco da ponta (S1/S2,
+     S7/S8) é mais estreito e 1,7× mais fundo que as outras salas.
+     S1/S7: na planta real, o PET (junto ao corredor, com a porta) e a sala
+     dos professores atrás dele. No jogo, um objetivo só.
+     S2/S8: a sala de aula grande, com a porta no canto junto à S3/S9. */
   {
-    id: 'S1', name: 'Sala 1', shortName: 'S1', kind: 'sala', side: 'top', tone: 'tecnica',
-    corridorPosition: 65, baseCleaningMinutes: 5, materialCost: 1, cleanable: true,
-    spanStartMeters: 0, spanWidthMeters: 8, depth: 1.3,
+    id: 'S1', name: 'PET e sala dos professores', shortName: 'S1', kind: 'sala', side: 'top', tone: 'tecnica',
+    corridorPosition: 64.5, baseCleaningMinutes: 5, materialCost: 1, cleanable: true,
+    spanStartMeters: 0, spanWidthMeters: 6.3, depth: 1.7, subdivisao: 0.37,
   },
   {
     id: 'S2', name: 'Sala 2', shortName: 'S2', kind: 'sala', side: 'top', tone: 'grande',
-    corridorPosition: 55, baseCleaningMinutes: 8, materialCost: 1, cleanable: true,
-    spanStartMeters: 8, spanWidthMeters: 14, depth: 1.3,
+    corridorPosition: 53, baseCleaningMinutes: 8, materialCost: 1, cleanable: true,
+    spanStartMeters: 6.3, spanWidthMeters: 11.5, depth: 1.7,
   },
+  /* S3/S4 (e S9/S10) têm o mesmo tamanho na planta real, e as portas ficam
+     coladas na parede que as divide: a da S3 no canto direito, a da S4 no
+     esquerdo. Por isso as duas estações estão a só 2 m uma da outra. */
   {
     id: 'S3', name: 'Sala 3', shortName: 'S3', kind: 'sala', side: 'top', tone: 'estreita',
-    corridorPosition: 45, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
-    spanStartMeters: 22, spanWidthMeters: 6, depth: 1,
+    corridorPosition: 46.8, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
+    spanStartMeters: 17.8, spanWidthMeters: 6.4, depth: 1,
   },
   {
     id: 'S4', name: 'Sala 4', shortName: 'S4', kind: 'sala', side: 'top', tone: 'estreita',
-    corridorPosition: 38, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
-    spanStartMeters: 28, spanWidthMeters: 7, depth: 1,
+    corridorPosition: 44.8, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
+    spanStartMeters: 24.2, spanWidthMeters: 6.5, depth: 1,
   },
+  /* S5/S11 e S6/S12: porta no centro da parede do corredor, como na planta
+     real. A posição é o meio de cada sala no desenho (70 − centro). */
   {
     id: 'S5', name: 'Sala 5', shortName: 'S5', kind: 'sala', side: 'top', tone: 'pequena',
-    corridorPosition: 28, baseCleaningMinutes: 6, materialCost: 1, cleanable: true,
-    spanStartMeters: 35, spanWidthMeters: 13, depth: 1,
+    corridorPosition: 32, baseCleaningMinutes: 6, materialCost: 1, cleanable: true,
+    spanStartMeters: 30.7, spanWidthMeters: 14.7, depth: 1,
   },
   {
     id: 'S6', name: 'Sala 6', shortName: 'S6', kind: 'sala', side: 'top', tone: 'media',
-    corridorPosition: 18, baseCleaningMinutes: 6, materialCost: 1, cleanable: true,
-    spanStartMeters: 48, spanWidthMeters: 12.2, depth: 1,
+    corridorPosition: 17.2, baseCleaningMinutes: 6, materialCost: 1, cleanable: true,
+    spanStartMeters: 45.4, spanWidthMeters: 14.8, depth: 1,
   },
   /**
    * PONTA LESTE — na planta real o banheiro é um bloco único encostado em
@@ -117,34 +127,34 @@ export const rooms: RoomDef[] = [
 
   // ----- Ala inferior -------------------------------------------------
   {
-    id: 'S7', name: 'Sala 7', shortName: 'S7', kind: 'sala', side: 'bottom', tone: 'tecnica',
-    corridorPosition: 65, baseCleaningMinutes: 5, materialCost: 1, cleanable: true,
-    spanStartMeters: 0, spanWidthMeters: 8, depth: 1.3,
+    id: 'S7', name: 'PET e sala dos professores', shortName: 'S7', kind: 'sala', side: 'bottom', tone: 'tecnica',
+    corridorPosition: 64.5, baseCleaningMinutes: 5, materialCost: 1, cleanable: true,
+    spanStartMeters: 0, spanWidthMeters: 6.3, depth: 1.7, subdivisao: 0.37,
   },
   {
     id: 'S8', name: 'Sala 8', shortName: 'S8', kind: 'sala', side: 'bottom', tone: 'grande',
-    corridorPosition: 55, baseCleaningMinutes: 8, materialCost: 1, cleanable: true,
-    spanStartMeters: 8, spanWidthMeters: 14, depth: 1.3,
+    corridorPosition: 53, baseCleaningMinutes: 8, materialCost: 1, cleanable: true,
+    spanStartMeters: 6.3, spanWidthMeters: 11.5, depth: 1.7,
   },
   {
     id: 'S9', name: 'Sala 9', shortName: 'S9', kind: 'sala', side: 'bottom', tone: 'estreita',
-    corridorPosition: 45, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
-    spanStartMeters: 22, spanWidthMeters: 6, depth: 1,
+    corridorPosition: 46.8, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
+    spanStartMeters: 17.8, spanWidthMeters: 6.4, depth: 1,
   },
   {
     id: 'S10', name: 'Sala 10', shortName: 'S10', kind: 'sala', side: 'bottom', tone: 'estreita',
-    corridorPosition: 38, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
-    spanStartMeters: 28, spanWidthMeters: 7, depth: 1,
+    corridorPosition: 44.8, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
+    spanStartMeters: 24.2, spanWidthMeters: 6.5, depth: 1,
   },
   {
     id: 'S11', name: 'Sala 11', shortName: 'S11', kind: 'sala', side: 'bottom', tone: 'pequena',
-    corridorPosition: 28, baseCleaningMinutes: 6, materialCost: 1, cleanable: true,
-    spanStartMeters: 35, spanWidthMeters: 13, depth: 1,
+    corridorPosition: 32, baseCleaningMinutes: 6, materialCost: 1, cleanable: true,
+    spanStartMeters: 30.7, spanWidthMeters: 14.7, depth: 1,
   },
   {
     id: 'S12', name: 'Sala 12', shortName: 'S12', kind: 'sala', side: 'bottom', tone: 'media',
-    corridorPosition: 18, baseCleaningMinutes: 6, materialCost: 1, cleanable: true,
-    spanStartMeters: 48, spanWidthMeters: 12.2, depth: 1,
+    corridorPosition: 17.2, baseCleaningMinutes: 6, materialCost: 1, cleanable: true,
+    spanStartMeters: 45.4, spanWidthMeters: 14.8, depth: 1,
   },
   {
     id: 'WC-B', name: 'Banheiro sul', shortName: 'WC', kind: 'wc', side: 'bottom', tone: 'banheiro',

@@ -16,6 +16,7 @@ import { actionAvailability, evalTime, type EffectContext } from './effects';
 import { roomsById } from '../data/rooms';
 import { prototipoFase1, situationsById } from '../data/situations';
 import { definirModoPlaytest, isEligible } from './situationPicker';
+import { PONTOS } from './mapa';
 import type { GameState } from './types';
 
 /** Chega numa sala pagando o deslocamento e força a situação pedida. */
@@ -76,8 +77,8 @@ describe('custo pela distância', () => {
       };
       return espera.type === 'eventTime' ? evalTime(espera.amount, ctx) : 0;
     };
-    // S5 fica a 20 m do depósito; a escada, a 63,5 m.
-    expect(custo('S5')).toBeCloseTo(20 / gameConfig.metersPerMinute + 1);
+    // A escada fica a 63,5 m do depósito; a S5, bem mais perto.
+    expect(custo('S5')).toBeCloseTo((roomsById.S5.corridorPosition - 8) / gameConfig.metersPerMinute + 1);
     expect(custo('ESC')).toBeCloseTo(63.5 / gameConfig.metersPerMinute + 1, 1);
     expect(custo('ESC')).toBeGreaterThan(custo('S5') * 2);
   });
@@ -88,6 +89,7 @@ describe('efeito regional', () => {
     let s = limpar(createInitialState(), 'S4'); // S4 já feita: não recebe
     s = chooseAction(em(s, 'S3', 'sala-suja'), 'varrer-corredor');
     expect(s.modifiers).toHaveLength(1);
+    // S2/S8 ficam a 6,5 m da porta da S3 (porta no canto): dentro do raio.
     expect(s.modifiers[0].targets.sort()).toEqual(['S10', 'S2', 'S8', 'S9'].sort());
     expect(previewCleaningMinutes(s, 'S9')).toBe(roomsById.S9.baseCleaningMinutes + 2);
     expect(previewCleaningMinutes(s, 'S1')).toBe(roomsById.S1.baseCleaningMinutes);
@@ -128,7 +130,7 @@ describe('efeito regional', () => {
   it('a enceradeira estacionada tem posição no corredor e vale nas salas daquele ponto', () => {
     const s = chooseAction(em(createInitialState(), 'S3', 'enceradeira-disponivel'), 'estacionar-fundo');
     expect(s.modifiers[0].targets.sort()).toEqual(['S2', 'S8']);
-    expect(s.modifiers[0].equipment).toEqual({ label: 'A enceradeira', position: 55 });
+    expect(s.modifiers[0].equipment).toEqual({ label: 'A enceradeira', position: PONTOS.fundo });
     // Estacionada a partir de S2, a própria S2 não recebe: só a da frente.
     const deS2 = chooseAction(em(createInitialState(), 'S2', 'enceradeira-disponivel'), 'estacionar-fundo');
     expect(deS2.modifiers[0].targets).toEqual(['S8']);
@@ -184,9 +186,9 @@ describe('recursos no mapa', () => {
   it('material deixado no meio do corredor é recolhido por quem passa', () => {
     let s = createInitialState();
     s = chooseAction(em(s, 'WC-A', 'carrinho-da-manutencao'), 'levar-meio');
-    expect(s.stashes).toEqual([expect.objectContaining({ position: 38, charges: 4 })]);
+    expect(s.stashes).toEqual([expect.objectContaining({ position: PONTOS.meio, charges: 4 })]);
     s = { ...s, charges: 3 };
-    s = limpar(s, 'S3'); // de 4 m até 45 m: passa pelos 38 m
+    s = limpar(s, 'S3'); // do banheiro até a S3: passa pela S4/S10, onde está a caixa
     expect(s.stashes).toHaveLength(0);
     expect(s.charges).toBe(3 + 4 - 1);
     expect(s.log.some((entry) => entry.title.includes('material recolhido'))).toBe(true);
@@ -195,33 +197,34 @@ describe('recursos no mapa', () => {
   it('com o carrinho quase cheio, pega o que cabe e o resto continua lá', () => {
     let s = chooseAction(em(createInitialState(), 'WC-A', 'carrinho-da-manutencao'), 'levar-meio');
     s = limpar(s, 'S3'); // carrinho com 8: cabem 2 dos 4
-    expect(s.stashes).toEqual([expect.objectContaining({ position: 38, charges: 2 })]);
+    expect(s.stashes).toEqual([expect.objectContaining({ position: PONTOS.meio, charges: 2 })]);
   });
 
   it('o que não cabe no carrinho fica no corredor, onde você está', () => {
     const s = chooseAction(em(createInitialState(), 'S3', 'entrega-de-material'), 'parar-estocar');
     // Carrinho: 10 − 1 + 6 → cabe só 1; sobram 5 em S3/S9.
     expect(s.charges).toBe(gameConfig.maxCharges);
-    expect(s.stashes).toEqual([expect.objectContaining({ position: 45, charges: 5 })]);
+    expect(s.stashes).toEqual([expect.objectContaining({ position: roomsById.S3.corridorPosition, charges: 5 })]);
   });
 
   it('ir ao depósito não recolhe estoque no caminho: a recarga encheria de qualquer jeito', () => {
-    const estoque = { id: 'teste', label: 'Teste', position: 38, charges: 4 };
+    const estoque = { id: 'teste', label: 'Teste', position: PONTOS.meio, charges: 4 };
     let s: GameState = { ...createInitialState(), currentPosition: 65, charges: 2, stashes: [estoque] };
-    s = confirmTravel(selectRoom(s, 'DEP-A')); // de 65 m a 8 m, passando pelos 38 m
+    s = confirmTravel(selectRoom(s, 'DEP-A')); // de 65 m a 8 m, passando pela caixa
     expect(s.charges).toBe(gameConfig.maxCharges);
     expect(s.stashes).toEqual([estoque]);
   });
 
   it('o rádio busca no estoque do corredor quando ele está mais perto que o depósito', () => {
-    // Uma decisão anterior deixou 5 cargas no fundo (S2/S8, 55 m).
+    // Uma decisão anterior deixou 5 cargas no fundo (S2/S8).
     let s = chooseAction(em(createInitialState(), 'S5', 'entrega-de-material'), 'deixar-fundo');
     s = { ...s, charges: 2 };
-    const chegou = em(s, 'S1', 'material-acabando'); // passa pelos 55 m e recolhe 5
-    const antes = { ...chegou, charges: 1, stashes: [{ id: 'fundo', label: 'Caixas da entrega', position: 55, charges: 5 }] };
+    const chegou = em(s, 'S1', 'material-acabando'); // passa pelo fundo e recolhe 5
+    const antes = { ...chegou, charges: 1, stashes: [{ id: 'fundo', label: 'Caixas da entrega', position: PONTOS.fundo, charges: 5 }] };
     const depois = chooseAction(antes, 'radio');
-    // 10 m até o estoque (2 min) + 1 min de chamada, em vez de 57 m até o depósito.
-    expect(depois.eventMinutes - antes.eventMinutes).toBeCloseTo(3, 1);
+    // Da S1 até o estoque no fundo, + 1 min de chamada, em vez de ir até o depósito.
+    const espera = (roomsById.S1.corridorPosition - PONTOS.fundo) / gameConfig.metersPerMinute + 1;
+    expect(depois.eventMinutes - antes.eventMinutes).toBeCloseTo(espera, 1);
     expect(depois.stashes).toEqual([expect.objectContaining({ charges: 1 })]);
   });
 

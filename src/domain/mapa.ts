@@ -39,9 +39,9 @@ export function depositoFechado(state: GameState): boolean {
 /** Pontos do corredor usados como destino de recursos. */
 export const PONTOS = {
   /** Estação de S4/S10: o meio do corredor. */
-  meio: 38,
+  meio: 44.8,
   /** Estação de S2/S8: o fundo, a região mais longe do depósito. */
-  fundo: 55,
+  fundo: 53,
 } as const;
 
 /** Nome curto de uma posição do corredor, pelas salas que ficam nela. */
