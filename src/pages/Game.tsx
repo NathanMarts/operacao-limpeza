@@ -9,6 +9,7 @@ import {
   BuffPanel,
   GameHeader,
   Instructions,
+  MapPanel,
   type GameTab,
   Legend,
   ObjectivePanel,
@@ -18,6 +19,41 @@ import {
 } from '../components/Panels';
 import { gameConfig } from '../data/gameConfig';
 import { previewCleaningMinutes } from '../domain/game';
+import { DEPOSITO_POSITION } from '../data/rooms';
+import { formatMeters, formatMinutes } from '../domain/effects';
+import { distanceBetween, travelMinutes } from '../domain/movement';
+import type { RoomDef } from '../domain/types';
+
+/**
+ * Aviso do "saia e volte", com o atalho. O mapa já desenha a volta pelo
+ * depósito; o aviso existe para quem não percebeu, e o botão faz as duas idas.
+ */
+function AvisoSaiaEVolte({ sala, compacto, onClick }: { sala: RoomDef; compacto: boolean; onClick: () => void }) {
+  const metros = 2 * distanceBetween(sala.corridorPosition, DEPOSITO_POSITION);
+  const minutos = travelMinutes(metros) + gameConfig.refillMinutes;
+  return (
+    <div
+      className={`flex min-w-0 flex-wrap items-center gap-3 rounded-lg border border-warn/50 ${
+        compacto ? 'mr-auto bg-panel px-3.5 py-2 shadow-lg' : 'mt-4 bg-warn/10 px-5 py-4'
+      }`}
+    >
+      <Icon.mapa className="h-4 w-4 shrink-0 text-warn" aria-hidden />
+      <p className={`min-w-0 flex-1 text-txt ${compacto ? 'text-[12.5px]' : 'text-[13.5px]'}`}>
+        Falta só {sala.name}, onde você está. Para voltar a ela, é preciso sair: ir ao depósito e voltar
+        ({formatMeters(metros)} m, cerca de {formatMinutes(minutos)} min com a recarga).
+      </p>
+      <button
+        type="button"
+        onClick={onClick}
+        className={`shrink-0 rounded-md bg-warn font-semibold text-warn-ink transition-opacity hover:opacity-90 ${
+          compacto ? 'px-3 py-1.5 text-[12.5px]' : 'px-5 py-2 text-[14px]'
+        }`}
+      >
+        Ir ao depósito e voltar
+      </button>
+    </div>
+  );
+}
 import { useCleaningGame } from '../hooks/useCleaningGame';
 import { Icon } from '../components/icons';
 
@@ -131,7 +167,12 @@ export function Game() {
         {/* Centro */}
         <section className="min-w-0">
           {tab === 'mapa' ? (
-            <div className="relative overflow-hidden rounded-xl border border-line bg-map-bg p-4">
+            <div
+              className={`relative overflow-hidden rounded-xl border border-line bg-map-bg p-4 ${
+                /* Expandido, a faixa de baixo guarda os botões e alertas sem cobrir o desenho. */
+                expandido ? 'pb-20' : ''
+              }`}
+            >
               <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
                 <label className="flex cursor-pointer select-none items-center gap-2 rounded-lg border border-line bg-panel px-3 py-1.5 text-[12.5px] text-txt-2">
                   <input
@@ -169,9 +210,53 @@ export function Game() {
                 desenho para baixo a cada vantagem ganha. Aqui mora na mesma
                 faixa de cima que já é dos controles, e o desenho não se move.
               */}
-              {expandido && state.buffs.length > 0 && (
-                <div className="absolute left-4 top-4 z-10 w-[250px]">
+              {expandido && (
+                <div className="absolute left-4 top-4 z-10 w-[250px] space-y-3">
+                  <MapPanel state={state} />
                   <BuffPanel buffs={state.buffs} />
+                </div>
+              )}
+
+              {/* Mapa expandido: as colunas saem de cena, e Reiniciar e
+                  Finalizar vêm junto, no canto inferior direito do mapa. */}
+              {expandido && (
+                <div className="absolute inset-x-4 bottom-8 z-10 flex items-end justify-end gap-2">
+                  {/* Os alertas que ficariam abaixo do mapa sobem para esta
+                      faixa, ao lado dos botões: expandido, o que está abaixo
+                      do mapa sai da tela. */}
+                  {game.precisaSair && (
+                    <AvisoSaiaEVolte sala={game.precisaSair} compacto onClick={actions.sairEVoltar} />
+                  )}
+                  {game.needsWait && (
+                    <div className="mr-auto flex min-w-0 items-center gap-3 rounded-lg border border-warn/50 bg-panel px-3.5 py-2 shadow-lg">
+                      <Icon.bloqueada className="h-4 w-4 shrink-0 text-warn" aria-hidden />
+                      <p className="min-w-0 text-[12.5px] text-txt">
+                        Não há para onde ir agora: o que falta (e o depósito) está fechado.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={actions.wait}
+                        className="shrink-0 rounded-md bg-warn px-3 py-1.5 text-[12.5px] font-semibold text-warn-ink transition-opacity hover:opacity-90"
+                      >
+                        Aguardar no corredor
+                      </button>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={actions.restart}
+                    className="flex items-center gap-2 rounded-lg border border-line bg-panel px-3.5 py-2 text-[13px] font-medium text-txt shadow-lg transition-colors hover:bg-btn"
+                  >
+                    <Icon.reiniciar className="h-[15px] w-[15px]" aria-hidden /> Reiniciar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={actions.finish}
+                    disabled={state.route.length === 0}
+                    className="flex items-center gap-2 rounded-lg border border-line bg-btn px-3.5 py-2 text-[13px] font-medium text-txt shadow-lg transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:text-txt-3 disabled:hover:bg-btn"
+                  >
+                    <Icon.finalizar className="h-[15px] w-[15px]" aria-hidden /> Finalizar limpeza
+                  </button>
                 </div>
               )}
 
@@ -193,12 +278,16 @@ export function Game() {
             <HistoryPanel history={game.history} onClear={actions.clearHistory} />
           )}
 
-          {game.needsWait && (
+          {game.precisaSair && !expandido && (
+            <AvisoSaiaEVolte sala={game.precisaSair} compacto={false} onClick={actions.sairEVoltar} />
+          )}
+
+          {game.needsWait && !expandido && (
             <div className="mt-4 flex flex-wrap items-center gap-4 rounded-xl border border-warn/40 bg-warn/10 px-5 py-4">
               <Icon.bloqueada className="h-5 w-5 shrink-0 text-warn" aria-hidden />
               <p className="flex-1 text-[13.5px] text-txt">
-                Todos os ambientes restantes estão ocupados no momento. Aguardar no corredor adianta o
-                relógio até o próximo liberar.
+                Não há para onde ir agora: os ambientes restantes (e o depósito) estão fechados.
+                Aguardar no corredor adianta o relógio até o próximo liberar.
               </p>
               <button
                 type="button"
@@ -216,6 +305,7 @@ export function Game() {
             fica no canto do próprio mapa, então continuam a um clique. */}
         {!expandido && (
           <aside className="space-y-4">
+            <MapPanel state={state} />
             <BuffPanel buffs={state.buffs} />
             <SequencePanel state={state} selectedStep={stepVisivel} onSelectStep={setStepVisivel} />
             <SummaryPanel summary={summary} />
@@ -250,6 +340,7 @@ export function Game() {
           isReturn={previewVisivel.isReturn}
           isDeposito={previewVisivel.isDeposito}
           refillMinutes={gameConfig.refillMinutes}
+          notas={previewVisivel.notas}
           saindo={cenaConfirmacao.saindo}
           onConfirm={actions.confirm}
           onCancel={actions.cancel}

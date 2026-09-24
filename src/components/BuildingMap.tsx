@@ -10,6 +10,9 @@ import {
   roomsById,
 } from '../data/rooms';
 import { formatMeters, formatMinutes } from '../domain/effects';
+import { modificadorDaSala, nomesDasSalas } from '../domain/mapa';
+import enceradeiraIcone from '../assets/enceradeira-mapa.png';
+import { precisaSairParaVoltar } from '../domain/game';
 import { distanceBetween, travelMinutes } from '../domain/movement';
 import type { GameState, LogEntry } from '../domain/types';
 import { PlayerPin } from './PlayerPin';
@@ -304,9 +307,13 @@ const FAIXA_ANINHADA: Record<string, number> = rooms.reduce((mapa, room) => {
 function visualStateOf(state: GameState, roomId: string, totalNow: number): RoomVisualState {
   const room = roomsById[roomId];
   if (state.pendingTargetId === roomId || state.situation?.roomId === roomId) return 'destino';
+  const roomState = state.rooms[roomId];
+  /* O depósito também fecha (piso alagado escorrendo para o ralo dele). */
+  if (room.kind === 'deposito' && roomState.blockedUntilMinute !== null && roomState.blockedUntilMinute > totalNow) {
+    return 'bloqueada';
+  }
   if (room.kind === 'deposito' || room.kind === 'entrada') return 'apoio';
 
-  const roomState = state.rooms[roomId];
   if (roomState.status === 'concluida') return 'concluida';
   if (roomState.blockedUntilMinute !== null && roomState.blockedUntilMinute > totalNow) {
     return 'bloqueada';
@@ -458,6 +465,7 @@ export function BuildingMap({
     };
   }, [ultimoLog]);
 
+  const precisaSair = precisaSairParaVoltar(state);
   const playerX = xDaPosicao(state.currentPosition);
   /* O pino encosta no marco — ou no topo do círculo do trecho, quando ele está
      desenhado justamente sob os pés do jogador. */
@@ -507,6 +515,7 @@ export function BuildingMap({
           visual={visualStateOf(state, room.id, totalMinutes)}
           minutesUntilFree={minutesUntilFree(room.id)}
           cleaningMinutes={cleaningMinutesFor(room.id)}
+          modificador={room.cleanable ? modificadorDaSala(state, room.id) : 0}
           reservedDepth={FAIXA_ANINHADA[room.id] ?? 0}
           onSelect={onSelect}
           onHover={setEmHover}
@@ -517,7 +526,7 @@ export function BuildingMap({
       {/* ---- Depósito com material baixo ----
           Anel lento em volta da porta do DEP quando o carrinho não tem mais o
           suficiente para o serviço. Sugere planejar a ida, sem piscar. */}
-      {state.charges <= 3 && (
+      {(state.charges <= 3 || precisaSair) && (
         <g pointerEvents="none">
           {[0, 1].map((i) => (
             <circle
@@ -594,6 +603,71 @@ export function BuildingMap({
         );
       })}
 
+
+      {/* ---- Última sala: saia e volte ----
+          Só falta o ambiente em que o trabalhador está, e para voltar a ele é
+          preciso sair. O mapa mostra a volta pelo depósito e quanto ela custa:
+          o clique continua sendo no depósito, como em qualquer ida. */}
+      {precisaSair && (() => {
+        const xSala = xDaPosicao(precisaSair.corridorPosition);
+        const xDep = xDaPosicao(DEPOSITO_POSITION);
+        const y = CENTER_Y + CORRIDOR_HEIGHT / 2 - 7;
+        const metros = 2 * distanceBetween(precisaSair.corridorPosition, DEPOSITO_POSITION);
+        const meio = (xSala + xDep) / 2;
+        const sentido = Math.sign(xDep - xSala) || 1;
+        const texto = `↩ saia e volte · ${formatMeters(metros)} m · ${formatMinutes(travelMinutes(metros))} min`;
+        const largura = texto.length * 5.2 + 16;
+        const ySelo = precisaSair.side === 'top' ? CENTER_Y - CORRIDOR_HEIGHT / 2 + 9 : CENTER_Y + CORRIDOR_HEIGHT / 2 - 9;
+        return (
+          <g className="saia-e-volte" pointerEvents="none" aria-label={`Para voltar a ${precisaSair.name}, vá ao depósito e volte`}>
+            <line x1={xSala} x2={xDep} y1={y} y2={y} stroke="#e08a1e" strokeWidth={1.75} strokeDasharray="5 4" />
+            {/* Setas nas duas pontas: vai ao depósito e volta. */}
+            <path d={`M ${xDep - sentido * 7} ${y - 4} L ${xDep} ${y} L ${xDep - sentido * 7} ${y + 4}`} fill="none" stroke="#e08a1e" strokeWidth={1.75} />
+            <path d={`M ${xSala + sentido * 7} ${y - 4} L ${xSala} ${y} L ${xSala + sentido * 7} ${y + 4}`} fill="none" stroke="#e08a1e" strokeWidth={1.75} />
+            <rect x={meio - largura / 2} y={y - 8} width={largura} height={16} rx={8} fill="#2a1a05" stroke="#e08a1e" strokeWidth={1} />
+            <text x={meio} y={y + 3.5} textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="9" fontWeight="700" fill="#ffc46b">
+              {texto}
+            </text>
+            <circle cx={xSala} cy={ySelo} r={4} fill="#e08a1e" />
+          </g>
+        );
+      })()}
+
+      {/* ---- Material parado no corredor ----
+          Caixa no ponto exato: quem passar por ali recolhe. É o recurso que
+          uma decisão deixou no mapa, e ele precisa estar à vista para pesar
+          na escolha da rota. */}
+      {state.stashes.map((stash) => {
+        const x = xDaPosicao(stash.position);
+        return (
+          <g key={stash.id} pointerEvents="none" aria-label={`${stash.label}: ${stash.charges} cargas no corredor`}>
+            <rect x={x - 10} y={CENTER_Y - 24} width={20} height={14} rx={2} fill="#f0b429" stroke="#6b4a00" strokeWidth={1} />
+            <line x1={x - 10} x2={x + 10} y1={CENTER_Y - 19.5} y2={CENTER_Y - 19.5} stroke="#6b4a00" strokeWidth={1} />
+            <rect x={x + 12} y={CENTER_Y - 24} width={22} height={14} rx={7} fill="#0b1220" opacity={0.9} />
+            <text x={x + 23} y={CENTER_Y - 14} textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="9" fontWeight="800" fill="#f0b429">
+              {`+${stash.charges}`}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* ---- Equipamento estacionado ----
+          A máquina deixada num ponto do corredor (enceradeira, lavadora):
+          objeto físico, à esquerda da caixa de material para as duas não se
+          cobrirem. A etiqueta diz o efeito, e o mouse por cima diz o resto. */}
+      {state.modifiers
+        .filter((mod) => mod.equipment && mod.targets.length > 0)
+        .map((mod) => {
+          const x = xDaPosicao(mod.equipment!.position) - 26;
+          const efeito = `${mod.minutes < 0 ? '−' : '+'}${Math.abs(mod.minutes)}`;
+          const dica = `${mod.equipment!.label} estacionada aqui: ${nomesDasSalas(mod.targets)} ${efeito} min ${mod.targets.length > 1 ? 'cada' : ''}`.trim();
+          return (
+            <g key={mod.id} className="cursor-help" aria-label={dica}>
+              <title>{dica}</title>
+              <image href={enceradeiraIcone} x={x - 16} y={CENTER_Y - 44} width={40} height={40} />
+            </g>
+          );
+        })}
 
       {/* ---- Prévia da rota no hover ----
           Antes de confirmar, o jogador vê quanto vai precisar andar. Pontilhado

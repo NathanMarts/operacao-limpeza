@@ -50,13 +50,7 @@ const perfil = (a: SituationAction, ctx: EffectContext) => {
 };
 
 /** Pares dominados que já existiam e estão fora do escopo corrigido. */
-const CONHECIDOS = [
-  /* parte-seca e duas-viagens custam base+2 e uma carga em toda sala: resíduo
-     min(2) igual ao eventTime min(2) da irmã. Mesma identidade aritmética das
-     cinco corrigidas; não entrou no lote porque a análise comparou apenas com
-     a irmã mais barata (balde-grande), contra quem parte-seca ganha material. */
-  'sem-torneira-na-sala.parte-seca vs duas-viagens',
-];
+const CONHECIDOS: string[] = [];
 
 function dominadas(): string[] {
   const inicial = createInitialState();

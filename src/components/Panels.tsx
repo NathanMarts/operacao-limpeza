@@ -7,6 +7,10 @@ import { gameConfig } from '../data/gameConfig';
 import { objectives } from '../data/rooms';
 import type { ActiveBuff, GameState } from '../domain/types';
 import type { Summary } from '../domain/game';
+import { totalMinutes } from '../domain/movement';
+import { DEPOSITOS, depositoFechado, minutoDoSinal, nomeDaPosicao, nomesDasSalas } from '../domain/mapa';
+import { situationsById } from '../data/situations';
+import { modoPlaytest } from '../domain/situationPicker';
 
 /* ------------------------------------------------------------------ */
 
@@ -69,7 +73,9 @@ export function GameHeader({
         </span>
         <div>
           <h1 className="text-[26px] font-bold leading-none tracking-tight text-txt">Operação Limpeza</h1>
-          <p className="mt-1 text-[13px] text-txt-2">Planeje. Limpe. Otimize.</p>
+          <p className="mt-1 text-[13px] text-txt-2">
+            {modoPlaytest() ? `Modo playtest · ${modoPlaytest()}` : 'Planeje. Limpe. Otimize.'}
+          </p>
         </div>
       </div>
 
@@ -93,6 +99,7 @@ export function GameHeader({
           icon={Icon.tempo}
           label="Tempo total"
           value={`${formatMinutes(tempoExibido)} min`}
+          detalhe={`próximo sinal: minuto ${minutoDoSinal(totalMinutes)}`}
         />
         <MetricCard
           icon={Icon.distancia}
@@ -157,10 +164,13 @@ function MetricCard({
   value,
   alert,
   atencao,
+  detalhe,
 }: {
   icon: ComponentType<{ className?: string }>;
   label: string;
   value: string;
+  /** Linha pequena abaixo do número, como o próximo sinal do relógio. */
+  detalhe?: string;
   alert?: boolean;
   /** Estoque baixo, mas ainda dá para trabalhar: avisa sem alarmar. */
   atencao?: boolean;
@@ -181,6 +191,7 @@ function MetricCard({
         <p className={`mt-1 text-[21px] font-bold leading-none ${alert ? 'text-warn' : 'text-txt'}`}>
           {value}
         </p>
+        {detalhe && <p className="mt-1 text-[11px] leading-none text-txt-2">{detalhe}</p>}
       </div>
     </div>
   );
@@ -345,6 +356,119 @@ export function SequencePanel({
           Clique em uma parada para vê-la no mapa.
         </p>
       )}
+    </Card>
+  );
+}
+
+type ItemMapa = { id: string; selo: string; tom: 'ok' | 'warn' | 'accent'; titulo: string; detalhe: string };
+
+/**
+ * Tudo o que decisões anteriores deixaram no mapa: efeitos com endereço,
+ * material no corredor, salas com colegas e salas adiadas. É o painel que
+ * responde "o que mudou na minha rota por causa daquela escolha?".
+ */
+export function MapPanel({ state }: { state: GameState }) {
+  const agora = totalMinutes(state);
+  const itens: ItemMapa[] = [];
+
+  for (const mod of state.modifiers) {
+    if (mod.until !== null && mod.until <= agora) continue;
+    const alvos = mod.targets.filter((id) => state.rooms[id].status !== 'concluida');
+    if (alvos.length === 0) continue;
+    itens.push({
+      id: mod.id,
+      selo: `${mod.minutes < 0 ? '−' : '+'}${Math.abs(mod.minutes)} min`,
+      tom: mod.minutes < 0 ? 'ok' : 'warn',
+      titulo: mod.equipment ? `${mod.equipment.label} em ${nomeDaPosicao(mod.equipment.position)}` : mod.label,
+      detalhe:
+        `${nomesDasSalas(alvos)}` +
+        (mod.until !== null ? ` · até o minuto ${formatMinutes(mod.until)}` : ''),
+    });
+  }
+  if (depositoFechado(state)) {
+    const ate = Math.max(...DEPOSITOS.map((id) => state.rooms[id].blockedUntilMinute ?? 0));
+    itens.push({
+      id: 'deposito-fechado',
+      selo: 'DEP',
+      tom: 'warn',
+      titulo: 'Depósito fechado',
+      detalhe: `sem recarga até o minuto ${formatMinutes(ate)}`,
+    });
+  }
+  for (const meta of state.metas) {
+    const faltam = meta.targets.filter((id) => state.rooms[id].status !== 'concluida');
+    itens.push({
+      id: `meta-${meta.id}`,
+      selo: `até ${formatMinutes(meta.until)}`,
+      tom: 'warn',
+      titulo: meta.label,
+      detalhe:
+        `${nomesDasSalas(faltam)} ${faltam.length > 1 ? 'prontas' : 'pronta'} até o minuto ${formatMinutes(meta.until)}` +
+        (meta.recompensa ? ` · a tempo: ${meta.recompensa.label}` : '') +
+        ` · atrasou: +${meta.penalidade} min`,
+    });
+  }
+  for (const stash of state.stashes) {
+    itens.push({
+      id: stash.id,
+      selo: `+${stash.charges}`,
+      tom: 'accent',
+      titulo: stash.label,
+      detalhe: `no corredor em ${nomeDaPosicao(stash.position)} · pega ao passar`,
+    });
+  }
+  for (const room of objectives) {
+    const roomState = state.rooms[room.id];
+    if (roomState.delegatedUntil && roomState.status !== 'concluida') {
+      itens.push({
+        id: `delegada-${room.id}`,
+        selo: room.shortName,
+        tom: 'accent',
+        titulo: 'Com um colega',
+        detalhe: `fica pronta no minuto ${formatMinutes(roomState.delegatedUntil)}`,
+      });
+    }
+    if (roomState.deferredSituationId && roomState.status === 'nao-iniciada') {
+      itens.push({
+        id: `adiada-${room.id}`,
+        selo: room.shortName,
+        tom: 'warn',
+        titulo: 'Adiada',
+        detalhe: situationsById[roomState.deferredSituationId]?.title ?? '',
+      });
+    }
+    if (roomState.previewSituationId && roomState.status === 'nao-iniciada') {
+      itens.push({
+        id: `revelada-${room.id}`,
+        selo: room.shortName,
+        tom: 'accent',
+        titulo: 'Você já sabe o que tem lá',
+        detalhe: situationsById[roomState.previewSituationId]?.title ?? '',
+      });
+    }
+  }
+
+  if (itens.length === 0) return null;
+  const TOM = {
+    ok: 'bg-ok/15 text-ok',
+    warn: 'bg-warn/15 text-warn',
+    accent: 'bg-accent-soft text-txt',
+  } as const;
+  return (
+    <Card title="No mapa" icon={Icon.mapa}>
+      <ul className="space-y-2">
+        {itens.map((item) => (
+          <li key={item.id} className="flex items-start gap-2.5 text-[13px]">
+            <span className={`mt-0.5 flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11px] font-semibold ${TOM[item.tom]}`}>
+              {item.selo}
+            </span>
+            <span className="flex-1">
+              <span className="text-txt">{item.titulo}</span>
+              <span className="block text-[12px] text-txt-2">{item.detalhe}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }

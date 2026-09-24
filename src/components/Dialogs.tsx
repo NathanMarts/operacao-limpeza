@@ -50,6 +50,8 @@ type ConfirmProps = {
   isReturn: boolean;
   isDeposito: boolean;
   refillMinutes: number;
+  /** O que decisões anteriores mudaram nesta sala, para o jogador ligar causa e efeito. */
+  notas?: string[];
   /** A cena está saindo: o domínio já mudou de fase, a casca visual sai depois. */
   saindo?: boolean;
   onConfirm: () => void;
@@ -64,6 +66,7 @@ export function RoomConfirmDialog({
   isReturn,
   isDeposito,
   refillMinutes,
+  notas = [],
   saindo,
   onConfirm,
   onCancel,
@@ -102,6 +105,16 @@ export function RoomConfirmDialog({
           </div>
         </div>
 
+        {notas.length > 0 && (
+          <ul className="mt-4 space-y-1.5 rounded-lg bg-accent-soft px-3 py-2 text-[12.5px] text-txt">
+            {notas.map((nota) => (
+              <li key={nota} className="flex gap-2">
+                <Icon.mapa className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" aria-hidden />
+                <span>{nota}</span>
+              </li>
+            ))}
+          </ul>
+        )}
         {isReturn && (
           <p className="mt-4 rounded-lg bg-warn/10 px-3 py-2 text-[12.5px] text-warn">
             Retorno de pendência: conclui direto, sem nova situação e sem gastar material.

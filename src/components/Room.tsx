@@ -33,6 +33,8 @@ type Props = {
   visual: RoomVisualState;
   minutesUntilFree: number;
   cleaningMinutes: number;
+  /** Minutos a mais ou a menos deixados nesta sala por decisões em outras. */
+  modificador?: number;
   onSelect: (roomId: string) => void;
   /** Avisa o mapa qual ambiente está sob o cursor, para a prévia da rota. */
   onHover?: (roomId: string | null) => void;
@@ -45,6 +47,7 @@ export function Room({
   visual,
   minutesUntilFree,
   cleaningMinutes,
+  modificador = 0,
   reservedDepth = 0,
   onSelect,
   onHover,
@@ -64,6 +67,9 @@ export function Room({
   const stroke = visual === 'destino' ? '#4f7df3' : visual === 'pendente' ? '#e08a1e' : PAREDE;
   const strokeWidth = visual === 'destino' ? 3 : visual === 'pendente' ? 2.5 : 1.75;
   const textoEscuro = visual === 'bloqueada' ? '#5b6472' : '#16232b';
+  const delegada = Boolean(roomState.delegatedUntil) && visual !== 'concluida';
+  const adiada = Boolean(roomState.deferredSituationId) && visual === 'disponivel';
+  const revelada = Boolean(roomState.previewSituationId) && visual === 'disponivel';
 
   const aria =
     `${room.name}. ` +
@@ -71,6 +77,8 @@ export function Room({
       ? 'Concluída.'
       : visual === 'pendente'
         ? `Pendente, restam ${roomState.residualMinutes} minutos.`
+        : delegada
+          ? `Com um colega, pronta em cerca de ${Math.ceil(minutesUntilFree)} minutos.`
         : visual === 'bloqueada'
           ? `Bloqueada por cerca de ${Math.ceil(minutesUntilFree)} minutos.`
           : visual === 'apoio'
@@ -339,10 +347,14 @@ export function Room({
           pointerEvents="none"
         >
           {visual === 'pendente'
-            ? `restam ${roomState.residualMinutes} min`
-            : visual === 'bloqueada'
-              ? `~${Math.ceil(minutesUntilFree)} min`
-              : `${cleaningMinutes} min`}
+            ? `restam ${cleaningMinutes} min`
+            : delegada
+              ? `colega · ~${Math.ceil(minutesUntilFree)} min`
+              : visual === 'bloqueada'
+                ? `~${Math.ceil(minutesUntilFree)} min`
+                : adiada
+                  ? `adiada · ${cleaningMinutes} min`
+                  : `${cleaningMinutes} min`}
         </text>
       )}
 
@@ -366,7 +378,71 @@ export function Room({
           <path d={`M ${x + width - 12} ${y + 5} a 7 7 0 0 0 0 14 z`} fill="#4a2f02" />
         </g>
       )}
-      {visual === 'bloqueada' && (
+      {/* Efeito deixado aqui por uma decisão em outra sala: verde barateia,
+          laranja encarece. É o que liga uma escolha ao resto da rota. */}
+      {modificador !== 0 && visual !== 'concluida' && !delegada && (
+        <g className="mapa-selo" pointerEvents="none">
+          <rect
+            x={x + 4}
+            y={y + 4}
+            width={modificador < 0 ? 24 : 24}
+            height={15}
+            rx={7.5}
+            fill={modificador < 0 ? '#34d399' : '#f97316'}
+          />
+          <text
+            x={x + 16}
+            y={y + 15}
+            textAnchor="middle"
+            fontFamily="Inter, sans-serif"
+            fontSize="9.5"
+            fontWeight="800"
+            fill={modificador < 0 ? '#06281c' : '#3a1602'}
+          >
+            {modificador < 0 ? `−${-modificador}` : `+${modificador}`}
+          </text>
+        </g>
+      )}
+      {delegada && (
+        <g className="mapa-selo" pointerEvents="none">
+          <circle cx={x + width - 12} cy={y + 12} r={8} fill="#4f7df3" />
+          <circle cx={x + width - 12} cy={y + 9.5} r={2.3} fill="#ffffff" />
+          <path d={`M ${x + width - 16.5} ${y + 17} a 4.5 4 0 0 1 9 0 z`} fill="#ffffff" />
+        </g>
+      )}
+      {adiada && (
+        <g className="mapa-selo" pointerEvents="none">
+          <circle cx={x + width - 12} cy={y + 12} r={8} fill="#f0b429" />
+          <text
+            x={x + width - 12}
+            y={y + 15.5}
+            textAnchor="middle"
+            fontFamily="Inter, sans-serif"
+            fontSize="10"
+            fontWeight="800"
+            fill="#4a2f02"
+          >
+            !
+          </text>
+        </g>
+      )}
+      {revelada && (
+        <g className="mapa-selo" pointerEvents="none">
+          <circle cx={x + width - 12} cy={y + 12} r={8} fill="#4f7df3" />
+          <text
+            x={x + width - 12}
+            y={y + 15.5}
+            textAnchor="middle"
+            fontFamily="Inter, sans-serif"
+            fontSize="10"
+            fontWeight="800"
+            fill="#ffffff"
+          >
+            i
+          </text>
+        </g>
+      )}
+      {visual === 'bloqueada' && !delegada && (
         <g className="mapa-selo" pointerEvents="none">
           <circle cx={x + width - 12} cy={y + 12} r={8} fill="#5b6472" />
           <rect x={x + width - 16} y={y + 11} width={8} height={6} rx={1} fill="#e8edf2" />
@@ -390,7 +466,7 @@ export function Room({
           fill="#4a3d6b"
           pointerEvents="none"
         >
-          RECARGA
+          {visual === 'bloqueada' ? 'FECHADO' : 'RECARGA'}
         </text>
       )}
     </g>

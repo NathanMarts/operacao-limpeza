@@ -1,3 +1,4 @@
+import './fixturesDeTeste';
 import { describe, expect, it } from 'vitest';
 import {
   chooseAction,
@@ -27,7 +28,7 @@ function comSituacao(state: GameState, roomId: string, situationId: string): Gam
 
 describe('volta exige ter saído', () => {
   it('não deixa terminar a pendência sem sair do ambiente', () => {
-    const s = chooseAction(comSituacao(createInitialState(), 'S5', 'sala-suja'), 'rapida');
+    const s = chooseAction(comSituacao(createInitialState(), 'S5', 'teste-generica'), 'limpeza-seca');
 
     expect(s.rooms['S5'].status).toBe('pendente');
     expect(s.rooms['S5'].residualMinutes).toBeGreaterThan(0);
@@ -38,14 +39,14 @@ describe('volta exige ter saído', () => {
   });
 
   it('não deixa re-sortear a situação de um ambiente apenas adiado', () => {
-    const s = chooseAction(comSituacao(createInitialState(), 'S5', 'sala-suja'), 'adiar');
+    const s = chooseAction(comSituacao(createInitialState(), 'S5', 'teste-sujeira'), 'sinalizar');
 
     expect(s.rooms['S5'].status).toBe('nao-iniciada');
     expect(isSelectable(s, 'S5')).toBe(false);
   });
 
   it('libera o ambiente depois de o trabalhador sair e voltar', () => {
-    let s = chooseAction(comSituacao(createInitialState(), 'S5', 'sala-suja'), 'rapida');
+    let s = chooseAction(comSituacao(createInitialState(), 'S5', 'teste-generica'), 'limpeza-seca');
     expect(isSelectable(s, 'S5')).toBe(false);
 
     /* O depósito é sempre selecionável: sair e voltar é sempre possível. */
@@ -65,7 +66,7 @@ describe('volta exige ter saído', () => {
     expect(roomsById['S1'].corridorPosition).toBe(roomsById['S7'].corridorPosition);
     expect(roomsById['S1'].side).not.toBe(roomsById['S7'].side);
 
-    const s = chooseAction(comSituacao(createInitialState(), 'S1', 'sala-suja'), 'rapida');
+    const s = chooseAction(comSituacao(createInitialState(), 'S1', 'teste-generica'), 'limpeza-seca');
 
     expect(isSelectable(s, 'S1')).toBe(false);
     expect(isSelectable(s, 'S7')).toBe(true);
@@ -75,8 +76,8 @@ describe('volta exige ter saído', () => {
     /* `moveTo` muda a posição sem abrir parada nova, então a última parada da
        rota continua sendo a sala — mas o trabalhador já saiu dela. */
     const s = chooseAction(
-      comSituacao(createInitialState(), 'S5', 'material-acabando'),
-      'ir-deposito',
+      comSituacao(createInitialState(), 'S5', 'teste-deposito'),
+      'trocar',
     );
 
     expect(s.route.at(-1)?.roomId).toBe('S5');

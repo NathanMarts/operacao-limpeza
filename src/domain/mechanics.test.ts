@@ -1,3 +1,4 @@
+import './fixturesDeTeste';
 import { describe, expect, it } from 'vitest';
 import {
   chooseAction,
@@ -45,7 +46,7 @@ describe('material e depósito', () => {
   it('passar pelo depósito durante outro deslocamento NÃO reabastece', () => {
     // S6(18) → WC-A(4) passa por cima do depósito, em 8.
     let state = createInitialState();
-    state = chooseAction(forceSituation(state, 'S6', 'sala-suja'), 'completa');
+    state = chooseAction(forceSituation(state, 'S6', 'teste-generica'), 'racionar');
     const antes = state.charges;
 
     state = arriveAt(state, 'WC-A');
@@ -55,7 +56,7 @@ describe('material e depósito', () => {
 
   it('o depósito é um destino clicável que cobra deslocamento e 4 min', () => {
     let state = createInitialState();
-    state = chooseAction(forceSituation(state, 'S1', 'sala-suja'), 'completa');
+    state = chooseAction(forceSituation(state, 'S1', 'teste-generica'), 'racionar');
     const gastas = gameConfig.initialCharges - state.charges;
     expect(gastas).toBe(1);
 
@@ -73,7 +74,7 @@ describe('material e depósito', () => {
   it('parar no depósito no meio de uma varredura monotônica custa 0 m extras', () => {
     // S6(18) → DEP(8) → WC-A(4) percorre os mesmos 14 m de S6 → WC-A.
     let comParada = createInitialState();
-    comParada = chooseAction(forceSituation(comParada, 'S6', 'sala-suja'), 'completa');
+    comParada = chooseAction(forceSituation(comParada, 'S6', 'teste-generica'), 'racionar');
     const base = comParada.distanceTraveled;
     comParada = arriveAt(comParada, 'DEP-A');
     comParada = arriveAt(comParada, 'WC-A');
@@ -82,12 +83,12 @@ describe('material e depósito', () => {
 
   it('sem cargas suficientes a limpeza completa fica indisponível, mas a situação sempre tem saída', () => {
     let state = { ...createInitialState(), charges: 0 };
-    state = forceSituation(state, 'WC-A', 'sala-suja');
-    // 'completa' exige 2 cargas e 'rapida' exige 1: ambas bloqueadas.
-    expect(chooseAction(state, 'completa')).toBe(state);
-    expect(chooseAction(state, 'rapida')).toBe(state);
-    // 'adiar' não exige material: o jogador nunca fica preso.
-    const depois = chooseAction(state, 'adiar');
+    state = forceSituation(state, 'WC-A', 'teste-generica');
+    // 'racionar' exige 2 cargas e 'limpeza-seca' exige 1: ambas bloqueadas.
+    expect(chooseAction(state, 'racionar')).toBe(state);
+    expect(chooseAction(state, 'limpeza-seca')).toBe(state);
+    // 'esperar-agua' não exige material: o jogador nunca fica preso.
+    const depois = chooseAction(state, 'esperar-agua');
     expect(depois.phase).toBe('mapa');
   });
 });
@@ -95,7 +96,7 @@ describe('material e depósito', () => {
 describe('pendência', () => {
   it('limpeza rápida deixa residual e a volta conclui sem gastar material', () => {
     let state = createInitialState();
-    state = chooseAction(forceSituation(state, 'S2', 'sala-suja'), 'rapida');
+    state = chooseAction(forceSituation(state, 'S2', 'teste-generica'), 'limpeza-seca');
 
     const base = roomsById['S2'].baseCleaningMinutes; // 8
     expect(state.rooms['S2'].status).toBe('pendente');
@@ -131,8 +132,8 @@ describe('pendência', () => {
 
   it('a volta para resolver a pendência cobra deslocamento de verdade', () => {
     let state = createInitialState();
-    state = chooseAction(forceSituation(state, 'S2', 'sala-suja'), 'rapida'); // 15 m
-    state = chooseAction(forceSituation(state, 'WC-A', 'sala-suja'), 'completa'); // +51 m
+    state = chooseAction(forceSituation(state, 'S2', 'teste-generica'), 'limpeza-seca'); // 15 m
+    state = chooseAction(forceSituation(state, 'WC-A', 'teste-generica'), 'racionar'); // +51 m
     const antes = state.distanceTraveled;
     state = arriveAt(state, 'S2'); // volta 51 m
     expect(state.distanceTraveled - antes).toBe(51);
@@ -141,17 +142,17 @@ describe('pendência', () => {
   it('adiar acumula sujeira: a sala fica mais cara na próxima visita', () => {
     let state = createInitialState();
     const base = roomsById['S5'].baseCleaningMinutes;
-    state = chooseAction(forceSituation(state, 'S5', 'sala-suja'), 'adiar');
+    state = chooseAction(forceSituation(state, 'S5', 'teste-sujeira'), 'sinalizar');
     expect(state.rooms['S5'].status).toBe('nao-iniciada');
     expect(state.charges).toBe(gameConfig.initialCharges);
-    expect(previewCleaningMinutes(state, 'S5')).toBe(base + 3);
+    expect(previewCleaningMinutes(state, 'S5')).toBe(base + 4);
   });
 });
 
 describe('bloqueio temporário', () => {
   it('bloqueia contra o tempo total acumulado', () => {
     let state = createInitialState();
-    state = chooseAction(forceSituation(state, 'S5', 'sala-em-uso'), 'seguir');
+    state = chooseAction(forceSituation(state, 'S5', 'teste-ocupada'), 'seguir');
     const total = currentTotal(state);
     expect(state.rooms['S5'].blockedUntilMinute).toBeCloseTo(total + gameConfig.blockDurationMinutes);
     expect(isSelectable(state, 'S5')).toBe(false);
@@ -160,13 +161,13 @@ describe('bloqueio temporário', () => {
 
   it('avançar o relógio limpando outras salas destrava a sala bloqueada', () => {
     let state = createInitialState();
-    state = chooseAction(forceSituation(state, 'S5', 'sala-em-uso'), 'seguir');
+    state = chooseAction(forceSituation(state, 'S5', 'teste-ocupada'), 'seguir');
     expect(isSelectable(state, 'S5')).toBe(false);
 
     // S2 e S8 são as salas mais demoradas: queimam relógio depressa.
-    state = chooseAction(forceSituation(state, 'S2', 'sala-suja'), 'completa');
-    state = chooseAction(forceSituation(state, 'S8', 'sala-suja'), 'completa');
-    state = chooseAction(forceSituation(state, 'WC-A', 'sala-suja'), 'completa');
+    state = chooseAction(forceSituation(state, 'S2', 'teste-generica'), 'racionar');
+    state = chooseAction(forceSituation(state, 'S8', 'teste-generica'), 'racionar');
+    state = chooseAction(forceSituation(state, 'WC-A', 'teste-generica'), 'racionar');
     expect(currentTotal(state)).toBeGreaterThan(gameConfig.blockDurationMinutes);
     expect(isSelectable(state, 'S5')).toBe(true);
   });

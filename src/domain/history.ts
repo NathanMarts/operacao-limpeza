@@ -1,6 +1,7 @@
 import { gameConfig } from '../data/gameConfig';
 import type { Summary } from './game';
 import type { DecisionRecord } from './types';
+import { modoPlaytest } from './situationPicker';
 
 export type HistoryEntry = {
   id: string;
@@ -15,6 +16,8 @@ export type HistoryEntry = {
   route: string[];
   /** Ausente em partidas salvas antes de as decisões serem registradas. */
   decisions?: DecisionRecord[];
+  /** Modo de playtest em que a partida foi jogada; ausente numa partida normal. */
+  modo?: string;
 };
 
 /**
@@ -55,6 +58,7 @@ export function saveRun(
     complete: summary.concluidas.length === summary.totalObjectives,
     route,
     decisions,
+    ...(modoPlaytest() ? { modo: modoPlaytest()! } : {}),
   };
   const next = [entry, ...loadHistory()].slice(0, gameConfig.historyMaxEntries);
   try {

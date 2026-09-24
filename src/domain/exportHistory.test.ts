@@ -73,12 +73,12 @@ describe('exportação do histórico', () => {
   it('aceita partidas antigas, salvas antes de as decisões existirem', () => {
     const { decisions: _, ...antiga } = entrada(1);
     expect(linhas(decisoesCsv([antiga]))).toHaveLength(1);
-    expect(linhas(partidasCsv([antiga]))[1].split(';')[10]).toBe('');
+    expect(linhas(partidasCsv([antiga]))[1].split(';')[11]).toBe('');
   });
 
   it('usa vírgula decimal e protege texto com separador', () => {
     const csv = partidasCsv([{ ...entrada(1), distanceTraveled: 73.5 }]);
-    expect(linhas(csv)[1].split(';')[9]).toBe('73,5');
+    expect(linhas(csv)[1].split(';')[10]).toBe('73,5');
     expect(csv.startsWith('﻿')).toBe(true);
   });
 });

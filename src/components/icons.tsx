@@ -24,6 +24,7 @@ import {
   MapPin,
   Moon,
   Package,
+  PackagePlus,
   Palette,
   PiggyBank,
   RotateCcw,
@@ -127,6 +128,9 @@ const CONSEQUENCE_ICON: Record<ConsequenceKind, LucideIcon> = {
   intocada: Circle,
   sujeira: TrendingUp,
   bloqueio: Lock,
+  regiao: Map,
+  estoque: PackagePlus,
+  delegada: Handshake,
 };
 
 export function ConsequenceIcon({

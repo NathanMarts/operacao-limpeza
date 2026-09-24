@@ -10,8 +10,10 @@ import {
   isSelectable,
   minutesUntilFree,
   mustWait,
+  precisaSairParaVoltar,
   previewCleaningMinutes,
   restart,
+  sairEVoltar,
   selectRoom,
   summarize,
   waitInCorridor,
@@ -21,7 +23,43 @@ import { roomsById } from '../data/rooms';
 import { situationsById } from '../data/situations';
 import { actionAvailability, summarizeAction, type EffectContext } from '../domain/effects';
 import { bestRun, clearHistory, loadHistory, saveRun, type HistoryEntry } from '../domain/history';
+import { nomeDaPosicao } from '../domain/mapa';
 import type { GameState } from '../domain/types';
+
+/**
+ * O que decisões anteriores deixaram nesta sala. Sem isto, o número muda no
+ * mapa mas o jogador não liga a mudança à escolha que a causou.
+ */
+function notasDaSala(state: GameState, roomId: string): string[] {
+  const roomState = state.rooms[roomId];
+  const notas: string[] = [];
+  if (roomState.deferredSituationId) {
+    const titulo = situationsById[roomState.deferredSituationId]?.title;
+    notas.push(`Você deixou esta sala para depois: "${titulo}" continua esperando aqui.`);
+  }
+  if (roomState.previewSituationId) {
+    const titulo = situationsById[roomState.previewSituationId]?.title;
+    notas.push(`Os alunos contaram o que espera aqui: "${titulo}".`);
+  }
+  for (const mod of state.modifiers) {
+    if (!mod.targets.includes(roomId)) continue;
+    if (mod.until !== null && mod.until <= currentTotal(state)) continue;
+    const sinal = mod.minutes < 0 ? '−' : '+';
+    notas.push(`${mod.label}: ${sinal}${Math.abs(mod.minutes)} min nesta sala.`);
+  }
+  if (roomState.status !== 'pendente' && state.charges < roomsById[roomId].materialCost && roomsById[roomId].cleanable) {
+    notas.push(`Seu carrinho tem ${state.charges} de ${roomsById[roomId].materialCost} cargas: talvez não dê para resolver esta sala.`);
+  }
+  const noCaminho = state.stashes.filter((stash) => {
+    const de = Math.min(state.currentPosition, roomsById[roomId].corridorPosition);
+    const ate = Math.max(state.currentPosition, roomsById[roomId].corridorPosition);
+    return stash.position >= de && stash.position <= ate && roomsById[roomId].kind !== 'deposito';
+  });
+  for (const stash of noCaminho) {
+    notas.push(`No caminho: ${stash.label} em ${nomeDaPosicao(stash.position)} (+${stash.charges} cargas).`);
+  }
+  return notas;
+}
 
 /**
  * Única fonte de verdade da partida. O hook não contém regra: só orquestra as
@@ -57,6 +95,7 @@ export function useCleaningGame() {
         }),
       choose: (actionId: string) => setState((current) => chooseAction(current, actionId)),
       wait: () => setState(waitInCorridor),
+      sairEVoltar: () => setState(sairEVoltar),
       finish,
       restart: () => {
         savedRef.current = false;
@@ -82,6 +121,7 @@ export function useCleaningGame() {
       cleaningMinutes: previewCleaningMinutes(state, room.id),
       isReturn: roomState.status === 'pendente',
       isDeposito: room.kind === 'deposito',
+      notas: notasDaSala(state, room.id),
     };
   }, [state]);
 
@@ -96,6 +136,10 @@ export function useCleaningGame() {
       charges: state.charges,
       position: room.corridorPosition,
       blockTargetId: state.situation.blockTargetId,
+      /* Sem estes dois a carta não sabia qual sala seria liberada, nem quais
+         salas um efeito regional alcança: mostrava promessas genéricas. */
+      unblockTargetId: state.situation.unblockTargetId ?? null,
+      game: state,
     };
     return {
       situation,
@@ -119,6 +163,7 @@ export function useCleaningGame() {
     summary: summarize(state),
     complete: isComplete(state),
     needsWait: mustWait(state),
+    precisaSair: precisaSairParaVoltar(state),
     isSelectable: (roomId: string) => isSelectable(state, roomId),
     minutesUntilFree: (roomId: string) => minutesUntilFree(state, roomId),
   };

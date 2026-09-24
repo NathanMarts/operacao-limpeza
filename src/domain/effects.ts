@@ -1,9 +1,23 @@
 import { DEPOSITO_POSITION, ENTRANCE_POSITION, roomsById } from '../data/rooms';
 import { gameConfig } from '../data/gameConfig';
-import { distanceBetween, travelMinutes } from './movement';
+import { distanceBetween, totalMinutes, travelMinutes } from './movement';
+import {
+  BANHEIRO_POSITION,
+  ESCADA_POSITION,
+  PONTOS,
+  depositoFechado,
+  minutoDoSinal,
+  nomeDaPosicao,
+  nomesDasSalas,
+  resolverRegiao,
+  salaDaFrente,
+  suprimentoMaisProximo,
+} from './mapa';
 import type {
   ChargeExpr,
   Effect,
+  GameState,
+  RegionTarget,
   Requirement,
   RoomDef,
   RoomState,
@@ -21,6 +35,11 @@ export type EffectContext = {
   blockTargetId: string | null;
   /** Alvo resolvido de `unblockRoom`, quando existir. */
   unblockTargetId?: string | null;
+  /**
+   * A partida inteira, quando disponível. Efeitos com endereço no mapa (a sala
+   * da frente, as vizinhas) só sabem quem alcançam olhando o estado.
+   */
+  game?: GameState;
 };
 
 /** Tempo base efetivo: o da planta mais a sujeira acumulada por adiamentos. */
@@ -41,6 +60,16 @@ export function evalTime(expr: TimeExpr, ctx: EffectContext): number {
       return expr.terms.reduce((total, term) => total + evalTime(term, ctx), 0);
     case 'diff':
       return evalTime(expr.left, ctx) - evalTime(expr.right, ctx);
+    case 'distance': {
+      const metros = distanceBetween(ctx.position, posicaoDoAlvo(expr.to, ctx));
+      return Math.round(travelMinutes(metros) * expr.factor * 10) / 10;
+    }
+    case 'ateIntervalo': {
+      /* Sem a partida em mãos, a espera média; na partida, a espera real. */
+      if (!ctx.game) return expr.every / 2;
+      const agora = totalMinutes(ctx.game);
+      return Math.round(((expr.every - (agora % expr.every)) % expr.every) * 10) / 10;
+    }
   }
 }
 
@@ -55,8 +84,37 @@ export function evalCharges(expr: ChargeExpr, ctx: EffectContext): number {
   }
 }
 
-export function targetPosition(target: 'deposito' | 'entrada'): number {
-  return target === 'deposito' ? DEPOSITO_POSITION : ENTRANCE_POSITION;
+export function targetPosition(target: 'deposito' | 'entrada' | 'escada'): number {
+  if (target === 'deposito') return DEPOSITO_POSITION;
+  if (target === 'escada') return ESCADA_POSITION;
+  return ENTRANCE_POSITION;
+}
+
+type AlvoDeDistancia = Extract<TimeExpr, { kind: 'distance' }>['to'];
+
+/**
+ * Onde fica o alvo de uma distância. Sem material alcançável (depósito fechado
+ * e nenhuma caixa), a conta cai no depósito: a ação que depende disso já está
+ * indisponível pelo requisito, e a carta ainda precisa de um número.
+ */
+function posicaoDoAlvo(to: AlvoDeDistancia, ctx: EffectContext): number {
+  if (to === 'suprimento' || to === 'estoque') {
+    const origem = to === 'estoque' ? 'estoque' : 'qualquer';
+    return suprimentoMaisProximo(ctx.game, ctx.position, origem)?.position ?? DEPOSITO_POSITION;
+  }
+  if (to === 'banheiro') return BANHEIRO_POSITION;
+  return targetPosition(to);
+}
+
+/** Algum ambiente por fazer está fechado agora e pode ser liberado? */
+export function temAmbienteFechado(game: GameState, room: RoomDef): boolean {
+  const agora = totalMinutes(game);
+  return Object.entries(game.rooms).some(([id, rs]) => {
+    const def = roomsById[id];
+    if (!def?.cleanable || id === room.id) return false;
+    if (rs.status === 'concluida' || rs.delegatedUntil) return false;
+    return rs.blockedUntilMinute !== null && rs.blockedUntilMinute > agora;
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -66,6 +124,38 @@ export function targetPosition(target: 'deposito' | 'entrada'): number {
 export type Availability = { available: true } | { available: false; reason: string };
 
 function checkRequirement(requirement: Requirement, ctx: EffectContext): Availability {
+  if (requirement.type === 'antesDoPonto') {
+    return ctx.position < PONTOS[requirement.at]
+      ? { available: true }
+      : { available: false, reason: 'Você já está ali: a caixa seria recolhida na hora.' };
+  }
+  if (requirement.type === 'depositoAcessivel') {
+    return ctx.game && depositoFechado(ctx.game)
+      ? { available: false, reason: 'O depósito está fechado agora.' }
+      : { available: true };
+  }
+  if (requirement.type === 'temEstoque') {
+    return !ctx.game || ctx.game.stashes.some((stash) => stash.charges > 0)
+      ? { available: true }
+      : { available: false, reason: 'Não há nenhuma caixa de material no corredor.' };
+  }
+  if (requirement.type === 'temBloqueada') {
+    return !ctx.game || temAmbienteFechado(ctx.game, ctx.room)
+      ? { available: true }
+      : { available: false, reason: 'Não há nenhum ambiente fechado para liberar.' };
+  }
+  if (requirement.type === 'regiaoComAlvo') {
+    if (requirement.target.kind === 'frente' && !salaDaFrente(ctx.room)) {
+      return { available: false, reason: 'Não há sala na frente desta.' };
+    }
+    /* Sem a partida em mãos não dá para saber; quem decide de verdade
+       (chooseAction) sempre passa o estado. */
+    if (!ctx.game) return { available: true };
+    if (resolverRegiao(ctx.game, ctx.room, requirement.target).length === 0) {
+      return { available: false, reason: `${REGIAO_GENERICA[requirement.target.kind]} já está resolvida.` };
+    }
+    return { available: true };
+  }
   const needed = evalCharges(requirement.amount, ctx);
   if (ctx.charges >= needed) return { available: true };
   return {
@@ -79,6 +169,22 @@ export function actionAvailability(action: SituationAction, ctx: EffectContext):
   for (const requirement of action.requires) {
     const result = checkRequirement(requirement, ctx);
     if (!result.available) return result;
+  }
+  /* O rádio só funciona se existe material alcançável: com o depósito fechado,
+     sobram as caixas do corredor. Não é requisito escrito na carta porque vale
+     para toda reposição, sempre. */
+  for (const effect of action.effects) {
+    if (effect.type === 'fetchSupply' && ctx.game) {
+      if (!suprimentoMaisProximo(ctx.game, ctx.position, effect.origem ?? 'qualquer')) {
+        return {
+          available: false,
+          reason:
+            effect.origem === 'estoque'
+              ? 'Não há nenhuma caixa de material no corredor.'
+              : 'O depósito está fechado e não há caixa no corredor.',
+        };
+      }
+    }
   }
   return { available: true };
 }
@@ -94,6 +200,147 @@ export type EffectBadge = {
 };
 
 const plural = (value: number, one: string, many: string) => (value === 1 ? one : many);
+
+const REGIAO_GENERICA: Record<RegionTarget['kind'], string> = {
+  frente: 'A sala da frente',
+  raio: 'As salas vizinhas',
+  ponto: 'Aquele ponto do corredor',
+  maisDistante: 'A sala mais distante',
+  parMaisDistante: 'O par de salas mais distante',
+  maisProximaOutraEstacao: 'A sala mais próxima em outra estação',
+  salas: 'Aquele ambiente',
+  tipo: 'Aqueles ambientes',
+  pendencias: 'Suas pendências',
+};
+
+/** Minuto em que o efeito termina: por duração, ou no N-ésimo próximo sinal. */
+function minutoFinal(ctx: EffectContext, minutes: number, ateSinal?: number): number | null {
+  if (!ctx.game) return null;
+  const agora = totalMinutes(ctx.game);
+  return ateSinal ? minutoDoSinal(agora, ateSinal) : agora + minutes;
+}
+
+function textoPrazo(ctx: EffectContext, minutes: number, ateSinal?: number): string {
+  const fim = minutoFinal(ctx, minutes, ateSinal);
+  if (ateSinal) {
+    const qual = ateSinal === 1 ? 'o próximo sinal' : `o ${ateSinal}º sinal`;
+    return fim === null ? `até ${qual}` : `até ${qual} (minuto ${formatMinutes(fim)})`;
+  }
+  return fim === null ? `por ${minutes} min` : `por ${minutes} min (até o minuto ${formatMinutes(fim)})`;
+}
+
+/**
+ * O efeito regional não alcança nenhum ambiente por fazer (ex.: o outro
+ * banheiro já está limpo). Aí a carta não mostra a linha: dizer "sem efeito"
+ * só confunde, e não há consequência nenhuma para o jogador pesar.
+ */
+function semAlvo(target: RegionTarget | 'self', ctx: EffectContext): boolean {
+  return target !== 'self' && Boolean(ctx.game) && resolverRegiao(ctx.game!, ctx.room, target).length === 0;
+}
+
+/** Quantas salas o efeito alcança agora (1 quando não dá para saber). */
+function quantosAlvos(target: RegionTarget | 'self', ctx: EffectContext): number {
+  if (target === 'self' || !ctx.game) return 1;
+  return resolverRegiao(ctx.game, ctx.room, target).length;
+}
+
+/** Salas alcançadas, quando a partida é conhecida; senão, a descrição genérica. */
+function alvosDe(target: RegionTarget | 'self', ctx: EffectContext): string {
+  if (target === 'self') return 'esta sala';
+  if (!ctx.game) return REGIAO_GENERICA[target.kind].toLowerCase();
+  const alvos = resolverRegiao(ctx.game, ctx.room, target);
+  return alvos.length > 0 ? nomesDasSalas(alvos) : '';
+}
+
+/** Frase de um efeito regional, com os nomes das salas quando a partida é conhecida. */
+function textoRegiao(effect: Extract<Effect, { type: 'modifyRooms' }>, ctx: EffectContext): string {
+  const sinal = effect.minutes < 0 ? '−' : '+';
+  const valor = `${sinal}${Math.abs(effect.minutes)} min`;
+  const prazo = effect.durationMinutes ? ` nos próximos ${effect.durationMinutes} min` : '';
+  const alvos = alvosDe(effect.target, ctx);
+  if (!alvos) return 'só alcançaria ambientes já limpos: sem efeito';
+  const onde = effect.equipment ? `${effect.equipment} fica em ${alvos}: ` : `${alvos}: `;
+  const cada = quantosAlvos(effect.target, ctx) > 1 ? ' cada' : '';
+  return `${onde}${valor}${cada}${prazo}`;
+}
+
+function textoBloqueioRegional(
+  effect: Extract<Effect, { type: 'blockRooms' }>,
+  ctx: EffectContext,
+): string {
+  const alvos = alvosDe(effect.target, ctx);
+  const fechadas = quantosAlvos(effect.target, ctx) > 1 ? 'fechadas' : 'fechada';
+  return alvos
+    ? `${alvos} ${fechadas} ${textoPrazo(ctx, effect.minutes)}`
+    : 'só fecharia ambientes já limpos: não atrapalha a rota';
+}
+
+function textoDelegacao(effect: Extract<Effect, { type: 'delegate' }>, ctx: EffectContext): string {
+  const fim = minutoFinal(ctx, effect.minutes, effect.ateSinal);
+  const quando =
+    fim !== null
+      ? `no minuto ${formatMinutes(fim)}`
+      : effect.ateSinal
+        ? `no ${effect.ateSinal}º sinal`
+        : `em ${effect.minutes} min`;
+  if (effect.target === 'self') return `${effect.label} conclui esta sala ${quando}; até lá ela fica fechada`;
+  const ids = ctx.game ? resolverRegiao(ctx.game, ctx.room, effect.target).slice(0, effect.limite ?? Infinity) : [];
+  const alvos = ids.length ? nomesDasSalas(ids) : REGIAO_GENERICA[effect.target.kind].toLowerCase();
+  return `${effect.label} deixa ${alvos} ${ids.length > 1 ? 'prontas' : 'pronta'} ${quando}, sem você`;
+}
+
+function textoSuprimento(
+  effect: Extract<Effect, { type: 'fetchSupply' }>,
+  ctx: EffectContext,
+): string {
+  const ponto = suprimentoMaisProximo(ctx.game, ctx.position, effect.origem ?? 'qualquer');
+  if (!ponto) return 'nenhum material alcançável agora';
+  return ponto.stashId
+    ? `+${effect.amount} cargas trazidas de "${ponto.label}", em ${nomeDaPosicao(ponto.position)}`
+    : `+${effect.amount} cargas trazidas do depósito`;
+}
+
+function textoBloqueio(effect: Extract<Effect, { type: 'blockRoom' }>, ctx: EffectContext): string {
+  const alvo =
+    effect.target === 'self'
+      ? 'esta sala'
+      : ctx.blockTargetId
+        ? roomsById[ctx.blockTargetId]?.shortName ?? 'outro ambiente'
+        : 'outro ambiente';
+  return `${alvo} fechada ${textoPrazo(ctx, effect.minutes, effect.ateSinal)}`;
+}
+
+function textoReveal(effect: Extract<Effect, { type: 'revealSituations' }>, ctx: EffectContext): string {
+  if (!effect.target) return `você fica sabendo o que espera nas ${effect.count} salas por fazer mais próximas`;
+  const alvos = alvosDe(effect.target, ctx);
+  return alvos ? `você fica sabendo o que espera em ${alvos}` : 'nada por fazer ali para descobrir';
+}
+
+function textoAposta(effect: Extract<Effect, { type: 'aposta' }>): string {
+  return `chance de 1 em ${effect.umEm}: ${effect.label}`;
+}
+
+function textoMeta(effect: Extract<Effect, { type: 'addMeta' }>, ctx: EffectContext): string {
+  const alvos = alvosDe(effect.target, ctx) || REGIAO_GENERICA[effect.target.kind].toLowerCase();
+  const prazo = ctx.game ? `até o minuto ${formatMinutes(totalMinutes(ctx.game) + effect.minutes)}` : `em ${effect.minutes} min`;
+  const premio = effect.recompensa ? `; a tempo: ${effect.recompensa.label}` : '';
+  const multa = effect.penalidadePorSala ? `+${effect.penalidade} min em cada uma` : `+${effect.penalidade} min lá`;
+  const prontas = quantosAlvos(effect.target, ctx) > 1 ? 'prontas' : 'pronta';
+  return `${alvos} ${prontas} ${prazo}${premio}; atrasou: ${multa}`;
+}
+
+/** Expressão de tempo em termos soltos, para explicar cada parcela na carta. */
+function termosDe(expr: TimeExpr): TimeExpr[] {
+  return expr.kind === 'sum' ? expr.terms.flatMap(termosDe) : [expr];
+}
+
+function textoEstoque(effect: Extract<Effect, { type: 'placeStash' }>): string {
+  if (effect.at === 'aqui') {
+    return `${effect.charges} cargas ficam nesta estação: pega quando passar de novo`;
+  }
+  const posicao = PONTOS[effect.at];
+  return `${effect.charges} cargas ficam em ${nomeDaPosicao(posicao)} (${posicao} m): pega ao passar`;
+}
 
 export function describeEffect(effect: Effect, ctx: EffectContext): EffectBadge | null {
   switch (effect.type) {
@@ -136,7 +383,8 @@ export function describeEffect(effect: Effect, ctx: EffectContext): EffectBadge 
     case 'moveTo': {
       const destination = targetPosition(effect.target);
       const meters = distanceBetween(ctx.position, destination);
-      const label = effect.target === 'deposito' ? 'até o depósito' : 'até a entrada';
+      const label =
+        effect.target === 'deposito' ? 'até o depósito' : effect.target === 'escada' ? 'até a escada' : 'até a entrada';
       return {
         text: `desloca ${label}: +${meters} m (+${formatMinutes(travelMinutes(meters))} min)`,
         tone: 'deslocamento',
@@ -149,18 +397,28 @@ export function describeEffect(effect: Effect, ctx: EffectContext): EffectBadge 
         ? { text: `libera ${name} agora`, tone: 'bom' }
         : { text: 'nada bloqueado para liberar agora', tone: 'tempo' };
     }
-    case 'blockRoom': {
-      if (effect.target === 'self') {
-        return { text: `esta sala fica bloqueada por ${effect.minutes} min`, tone: 'bloqueio' };
-      }
-      const name = ctx.blockTargetId ? roomsById[ctx.blockTargetId]?.shortName : null;
-      return {
-        text: name
-          ? `bloqueia ${name} por ${effect.minutes} min`
-          : `bloqueia outro objetivo por ${effect.minutes} min`,
-        tone: 'bloqueio',
-      };
-    }
+    case 'blockRoom':
+      return { text: textoBloqueio(effect, ctx), tone: 'bloqueio' };
+    case 'blockDeposito':
+      return { text: `o depósito fecha ${textoPrazo(ctx, effect.minutes)}`, tone: 'bloqueio' };
+    case 'aposta':
+      return { text: textoAposta(effect), tone: 'pendencia' };
+    case 'addMeta':
+      return { text: textoMeta(effect, ctx), tone: 'pendencia' };
+    case 'modifyRooms':
+      if (semAlvo(effect.target, ctx)) return null;
+      return { text: textoRegiao(effect, ctx), tone: effect.minutes < 0 ? 'bom' : 'pendencia' };
+    case 'blockRooms':
+      if (semAlvo(effect.target, ctx)) return null;
+      return { text: textoBloqueioRegional(effect, ctx), tone: 'bloqueio' };
+    case 'placeStash':
+      return { text: textoEstoque(effect), tone: 'bom' };
+    case 'fetchSupply':
+      return { text: textoSuprimento(effect, ctx), tone: 'bom' };
+    case 'delegate':
+      return { text: textoDelegacao(effect, ctx), tone: 'bom' };
+    case 'revealSituations':
+      return { text: textoReveal(effect, ctx), tone: 'bom' };
   }
 }
 
@@ -195,9 +453,18 @@ export type ConsequenceKind =
   | 'pendencia'
   | 'intocada'
   | 'sujeira'
-  | 'bloqueio';
+  | 'bloqueio'
+  | 'regiao'
+  | 'estoque'
+  | 'delegada';
 
-export type ConsequenceLine = { kind: ConsequenceKind; label: string; value: string };
+export type ConsequenceLine = {
+  kind: ConsequenceKind;
+  label: string;
+  value: string;
+  /** Consequência futura a favor do jogador, para a carta não pintá-la de alerta. */
+  bom?: boolean;
+};
 
 export type ActionSummary = {
   /** O que a escolha cobra imediatamente. */
@@ -223,12 +490,50 @@ export function summarizeAction(action: SituationAction, ctx: EffectContext): Ac
   let reabastece = false;
   let conclui = false;
   const depois: ConsequenceLine[] = [];
+  const agora: ConsequenceLine[] = [];
 
   for (const effect of action.effects) {
     switch (effect.type) {
       case 'cleanTime':
       case 'eventTime':
         minutos += evalTime(effect.amount, ctx);
+        /* O custo que depende da posição precisa dizer de onde vem, senão
+           o jogador vê só um número e não percebe que o mapa decidiu. */
+        for (const termo of termosDe(effect.amount)) {
+          if (termo.kind === 'distance') {
+            const metros = distanceBetween(ctx.position, posicaoDoAlvo(termo.to, ctx));
+            const ponto = suprimentoMaisProximo(
+              ctx.game,
+              ctx.position,
+              termo.to === 'estoque' ? 'estoque' : 'qualquer',
+            );
+            const onde =
+              termo.to === 'deposito'
+                ? 'do depósito'
+                : termo.to === 'entrada'
+                  ? 'da entrada'
+                  : termo.to === 'banheiro'
+                    ? 'da torneira dos banheiros'
+                    : ponto?.stashId
+                      ? `de "${ponto.label}"`
+                      : 'do depósito';
+            agora.push({
+              kind: 'deslocamento',
+              label: 'Distância',
+              value: `${formatMeters(metros)} m ${onde}: espera de ${formatMinutes(evalTime(termo, ctx))} min`,
+            });
+          }
+          if (termo.kind === 'ateIntervalo') {
+            const espera = evalTime(termo, ctx);
+            agora.push({
+              kind: 'tempo',
+              label: 'Intervalo',
+              value: ctx.game
+                ? `próximo sinal no minuto ${formatMinutes(totalMinutes(ctx.game) + espera)}: espera de ${formatMinutes(espera)} min`
+                : `espera até o próximo intervalo (a cada ${termo.every} min)`,
+            });
+          }
+        }
         break;
       case 'spendCharges':
         cargas += evalCharges(effect.amount, ctx);
@@ -281,9 +586,49 @@ export function summarizeAction(action: SituationAction, ctx: EffectContext): Ac
       case 'leaveUnstarted':
         depois.push({
           kind: 'intocada',
-          label: 'Sala intocada',
-          value: `${evalTime({ kind: 'base' }, ctx)} min inteiros ainda por fazer`,
+          label: 'Sala adiada',
+          value: 'a mesma situação espera você na volta',
         });
+        break;
+      case 'blockRooms':
+        if (semAlvo(effect.target, ctx)) break;
+        depois.push({ kind: 'bloqueio', label: 'Salas fechadas', value: textoBloqueioRegional(effect, ctx) });
+        break;
+      case 'fetchSupply':
+        cargas -= effect.amount;
+        depois.push({ kind: 'estoque', label: 'Reposição', value: textoSuprimento(effect, ctx), bom: true });
+        break;
+      case 'revealSituations':
+        depois.push({ kind: 'regiao', label: 'Informação', value: textoReveal(effect, ctx), bom: true });
+        break;
+      case 'blockDeposito':
+        depois.push({
+          kind: 'bloqueio',
+          label: 'Depósito fechado',
+          value: `sem recarga ${textoPrazo(ctx, effect.minutes)}`,
+        });
+        break;
+      case 'aposta':
+        depois.push({ kind: 'pendencia', label: 'Risco', value: textoAposta(effect) });
+        break;
+      case 'addMeta':
+        depois.push({ kind: 'regiao', label: effect.label, value: textoMeta(effect, ctx) });
+        break;
+      case 'modifyRooms':
+        if (semAlvo(effect.target, ctx)) break;
+        depois.push({
+          kind: 'regiao',
+          label: effect.label,
+          value: textoRegiao(effect, ctx),
+          bom: effect.minutes < 0,
+        });
+        break;
+      case 'placeStash':
+        depois.push({ kind: 'estoque', label: effect.label, value: textoEstoque(effect), bom: true });
+        break;
+      case 'delegate':
+        /* O texto já nomeia quem faz; o rótulo só diz o tipo de ajuda. */
+        depois.push({ kind: 'delegada', label: 'Com ajuda', value: textoDelegacao(effect, ctx), bom: true });
         break;
       case 'addDirt':
         depois.push({
@@ -303,32 +648,20 @@ export function summarizeAction(action: SituationAction, ctx: EffectContext): Ac
         });
         break;
       }
-      case 'blockRoom': {
-        const alvo =
-          effect.target === 'self'
-            ? 'Esta sala'
-            : ctx.blockTargetId
-              ? roomsById[ctx.blockTargetId]?.shortName ?? 'Outro ambiente'
-              : 'Outro ambiente';
-        depois.push({
-          kind: 'bloqueio',
-          label: 'Bloqueio',
-          value: `${alvo} indisponível por ${effect.minutes} min`,
-        });
+      case 'blockRoom':
+        depois.push({ kind: 'bloqueio', label: 'Bloqueio', value: textoBloqueio(effect, ctx) });
         break;
-      }
     }
   }
 
-  const agora: ConsequenceLine[] = [];
   if (minutos > 0) {
-    agora.push({ kind: 'tempo', label: 'Tempo', value: `+${formatMinutes(minutos)} min` });
+    agora.unshift({ kind: 'tempo', label: 'Tempo', value: `+${formatMinutes(minutos)} min` });
   }
   if (metros > 0) {
     agora.push({
       kind: 'deslocamento',
       label: 'Deslocamento',
-      value: `+${metros} m · ${formatMinutes(travelMinutes(metros))} min`,
+      value: `+${formatMeters(metros)} m · ${formatMinutes(travelMinutes(metros))} min`,
     });
   }
   if (reabastece) {
@@ -340,6 +673,12 @@ export function summarizeAction(action: SituationAction, ctx: EffectContext): Ac
       kind: 'material',
       label: 'Material',
       value: `−${cargas} ${cargas === 1 ? 'carga' : 'cargas'}`,
+    });
+  } else if (cargas < 0) {
+    agora.push({
+      kind: 'material',
+      label: 'Material',
+      value: `+${-cargas} ${cargas === -1 ? 'carga' : 'cargas'} no carrinho`,
     });
   } else {
     agora.push({ kind: 'material', label: 'Material', value: 'não gasta nada' });

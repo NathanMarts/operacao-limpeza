@@ -1,6 +1,7 @@
+import './fixturesDeTeste';
 import { describe, expect, it } from 'vitest';
 import { situations } from '../data/situations';
-import { roomsById } from '../data/rooms';
+import { DEPOSITO_POSITION, roomsById } from '../data/rooms';
 import { gameConfig } from '../data/gameConfig';
 import {
   actionAvailability,
@@ -38,7 +39,24 @@ type CostVector = {
   trabalhoFuturo: number;
   bloqueio: number;
   deslocamento: number;
+  /** Material que só existe se a rota passar por ele: vale menos que carga na mão. */
+  materialNoMapa: number;
+  /** Depender do relógio de outra pessoa: a sala só fica pronta no minuto combinado. */
+  dependencia: number;
+  /** Custo empurrado para salas vizinhas: pesa só se elas ainda estão por fazer. */
+  regiao: number;
+  /** A situação continua em aberto: o mesmo problema espera na volta. */
+  problemaAberto: number;
+  /** Saber antes o que espera nas próximas salas. */
+  informacao: number;
+  /** O resultado depende de sorte: a chance está escrita na carta. */
+  risco: number;
+  /** Um prazo aceito restringe a rota daqui para a frente. */
+  compromisso: number;
 };
+
+/** Espera média até o N-ésimo sinal, sem saber a hora: meio intervalo a menos. */
+const esperaDoSinal = (n: number) => n * 20 - 10;
 
 function costOf(action: SituationAction, ctx: EffectContext): CostVector {
   const cost: CostVector = {
@@ -47,6 +65,13 @@ function costOf(action: SituationAction, ctx: EffectContext): CostVector {
     trabalhoFuturo: 0,
     bloqueio: 0,
     deslocamento: 0,
+    materialNoMapa: 0,
+    dependencia: 0,
+    regiao: 0,
+    problemaAberto: 0,
+    informacao: 0,
+    risco: 0,
+    compromisso: 0,
   };
   let charges = ctx.charges;
   let concluded = false;
@@ -80,12 +105,28 @@ function costOf(action: SituationAction, ctx: EffectContext): CostVector {
         break;
       case 'leaveUnstarted':
         cost.trabalhoFuturo += evalTime({ kind: 'base' }, ctx);
+        cost.problemaAberto += 1;
         break;
       case 'addDirt':
         cost.trabalhoFuturo += effect.minutes;
         break;
       case 'blockRoom':
+        cost.bloqueio += effect.ateSinal ? esperaDoSinal(effect.ateSinal) : effect.minutes;
+        break;
+      case 'blockDeposito':
+        // Fechar a recarga pesa como fechar uma sala: é um ponto da rota que some.
         cost.bloqueio += effect.minutes;
+        break;
+      case 'aposta': {
+        // Custo esperado da falha, mais a incerteza em si.
+        const falha = costOf({ ...action, effects: effect.seFalhar }, ctx);
+        for (const axis of AXES) cost[axis] += falha[axis] / effect.umEm;
+        cost.risco += 1;
+        break;
+      }
+      case 'addMeta':
+        cost.compromisso += 1;
+        if (effect.recompensa) cost.trabalhoFuturo -= 3;
         break;
       case 'unblockRoom':
         // Liberar um objetivo é ganho de rota: custo negativo.
@@ -94,15 +135,42 @@ function costOf(action: SituationAction, ctx: EffectContext): CostVector {
       case 'moveTo':
         cost.deslocamento += distanceBetween(ctx.position, targetPosition(effect.target));
         break;
-      case 'gainCharges':
-        // Ganhar material é custo negativo, como reabastecer.
-        cost.material -= Math.min(effect.amount, gameConfig.maxCharges - charges);
-        charges += effect.amount;
+      case 'gainCharges': {
+        // Ganhar material é custo negativo, como reabastecer; o que não cabe fica no mapa.
+        const cabe = Math.min(effect.amount, gameConfig.maxCharges - charges);
+        cost.material -= cabe;
+        cost.materialNoMapa -= effect.amount - cabe;
+        charges += cabe;
         break;
+      }
       case 'grantBuff':
         // Um bônus diferido vale trabalho futuro poupado.
         if (effect.kind === 'tempo') cost.trabalhoFuturo -= effect.amount * effect.rooms;
         else cost.material -= effect.amount * effect.rooms;
+        break;
+      case 'modifyRooms':
+        // Sem a partida, assume uma sala alcançada: o sinal é o que importa.
+        cost.regiao += effect.minutes;
+        break;
+      case 'placeStash':
+        cost.materialNoMapa -= effect.charges;
+        break;
+      case 'delegate':
+        cost.dependencia += effect.ateSinal ? esperaDoSinal(effect.ateSinal) : effect.minutes;
+        // Delegar a si mesma não conclui agora, mas também não deixa trabalho seu.
+        if (effect.target !== 'self') cost.trabalhoFuturo -= 3;
+        break;
+      case 'blockRooms':
+        cost.regiao += effect.minutes / 5;
+        break;
+      case 'fetchSupply':
+        // Vindo de uma caixa do corredor, o ganho no carrinho é perda no mapa.
+        if (effect.origem === 'estoque') cost.materialNoMapa += effect.amount;
+        cost.material -= Math.min(effect.amount, gameConfig.maxCharges - charges);
+        charges = Math.min(gameConfig.maxCharges, charges + effect.amount);
+        break;
+      case 'revealSituations':
+        cost.informacao -= effect.count;
         break;
     }
   }
@@ -116,6 +184,13 @@ const AXES: (keyof CostVector)[] = [
   'trabalhoFuturo',
   'bloqueio',
   'deslocamento',
+  'materialNoMapa',
+  'dependencia',
+  'regiao',
+  'problemaAberto',
+  'informacao',
+  'risco',
+  'compromisso',
 ];
 
 /** X domina Y se não é pior em nenhum eixo e é melhor em ao menos um. */
@@ -156,6 +231,17 @@ describe('invariante de trade-off', () => {
 
     for (const situation of situations) {
       for (const { label, ctx } of contexts) {
+        /* Contextos em que a situação nunca aparece não contam: "material
+           acabando" com o carrinho cheio é uma comparação que o jogo não faz. */
+        const aparece = situation.conditions.every((condition) => {
+          if (condition.type === 'chargesAtMost') return ctx.charges <= condition.value;
+          if (condition.type === 'distanceFromDepotAtLeast') {
+            return Math.abs(ctx.position - DEPOSITO_POSITION) >= condition.meters;
+          }
+          return true;
+        });
+        if (!aparece) continue;
+        if (situation.appliesTo && !situation.appliesTo.includes(ctx.room.kind)) continue;
         const available = situation.actions.filter(
           (action) => actionAvailability(action, ctx).available,
         );
@@ -176,6 +262,7 @@ describe('invariante de trade-off', () => {
       }
     }
 
+    if (violations.length) console.log(violations.join(String.fromCharCode(10)));
     expect(violations).toEqual([]);
   });
 
@@ -185,9 +272,12 @@ describe('invariante de trade-off', () => {
     }
   });
 
-  it('toda situação tem ao menos uma ação executável com o carrinho vazio', () => {
-    for (const situation of situations) {
-      const room = roomsById['WC-A']; // pior caso: custo de material 2
+  it('com o carrinho vazio, todo tipo de ambiente ainda tem cartas com saída', () => {
+    /* Nem toda carta precisa de uma saída sem material: o sorteio já descarta
+       as que não têm ação possível (isEligible). O que não pode acontecer é um
+       tipo de ambiente ficar sem nenhuma carta sorteável com o carrinho vazio. */
+    for (const roomId of ['S5', 'WC-A', 'ESC']) {
+      const room = roomsById[roomId];
       const ctx: EffectContext = {
         room,
         roomState: cleanRoomState,
@@ -195,12 +285,13 @@ describe('invariante de trade-off', () => {
         position: room.corridorPosition,
         blockTargetId: 'S12',
       };
-      const eligible = situation.conditions.length === 0;
-      if (!eligible) continue;
-      const anyAvailable = situation.actions.some(
-        (action) => actionAvailability(action, ctx).available,
+      const comSaida = situations.filter(
+        (situation) =>
+          situation.conditions.length === 0 &&
+          (!situation.appliesTo || situation.appliesTo.includes(room.kind)) &&
+          situation.actions.some((action) => actionAvailability(action, ctx).available),
       );
-      expect(anyAvailable, `${situation.id} trava com 0 cargas`).toBe(true);
+      expect(comSaida.length, `${room.kind} sem carta possível com 0 cargas`).toBeGreaterThanOrEqual(2);
     }
   });
 });
@@ -308,7 +399,9 @@ describe('escopo por tipo de ambiente', () => {
     expect(porTipo('wc')).toBeGreaterThanOrEqual(4);
     expect(porTipo('escada')).toBeGreaterThanOrEqual(3);
     // E ainda sobram situações que valem em qualquer ambiente.
-    expect(kindsPorSituacao().filter((s) => !s.appliesTo).length).toBeGreaterThanOrEqual(3);
+    const emTodos = (s: { appliesTo?: string[] }) =>
+      !s.appliesTo || ['sala', 'wc', 'escada'].every((kind) => s.appliesTo!.includes(kind));
+    expect(kindsPorSituacao().filter(emTodos).length).toBeGreaterThanOrEqual(3);
   });
 
   it('uma situação escopada nunca é oferecida num tipo fora do seu escopo', () => {
@@ -345,27 +438,27 @@ describe('bônus diferidos', () => {
 
   it('um bônus de tempo abate minutos nas próximas salas e depois expira', () => {
     // "Caprichar e pegar embalo": −2 min nas 2 salas seguintes.
-    let state = jogar(createInitialState(), 'S5', 'sala-organizada', 'caprichar');
+    let state = jogar(createInitialState(), 'S5', 'teste-embalo', 'caprichar');
     expect(state.buffs).toHaveLength(1);
     expect(state.buffs[0].roomsLeft).toBe(2);
 
     const antes = state.cleaningMinutes;
-    state = jogar(state, 'S4', 'sala-suja', 'completa');
+    state = jogar(state, 'S4', 'teste-generica', 'racionar');
     const gastoComBonus = state.cleaningMinutes - antes;
     // S4 tem 4 min de base; o bônus abate 2.
     expect(gastoComBonus).toBe(roomsById['S4'].baseCleaningMinutes - 2);
     expect(state.buffs[0].roomsLeft).toBe(1);
 
-    state = jogar(state, 'S3', 'sala-suja', 'completa');
+    state = jogar(state, 'S3', 'teste-generica', 'racionar');
     expect(state.buffs).toHaveLength(0); // consumido nas duas salas
 
     const antesSemBonus = state.cleaningMinutes;
-    state = jogar(state, 'S2', 'sala-suja', 'completa');
+    state = jogar(state, 'S2', 'teste-generica', 'racionar');
     expect(state.cleaningMinutes - antesSemBonus).toBe(roomsById['S2'].baseCleaningMinutes);
   });
 
   it('o bônus nunca devolve mais tempo do que a sala custou', () => {
-    let state = jogar(createInitialState(), 'S5', 'sala-organizada', 'caprichar');
+    let state = jogar(createInitialState(), 'S5', 'teste-embalo', 'caprichar');
     const antes = state.cleaningMinutes;
     // Retorno a uma pendência de 3 min com um bônus de 2: abate só 2.
     state = {
@@ -381,34 +474,41 @@ describe('bônus diferidos', () => {
   });
 
   it('um bônus de material devolve cargas, sem passar do teto do carrinho', () => {
-    let state = jogar(createInitialState(), 'WC-A', 'carrinho-da-manutencao', 'levar-sobra');
+    let state = jogar(createInitialState(), 'S6', 'teste-bonus-material', 'avisar-ala');
     expect(state.buffs[0].kind).toBe('material');
 
     const antes = state.charges;
-    state = jogar(state, 'S5', 'sala-suja', 'completa');
+    state = jogar(state, 'S5', 'teste-generica', 'racionar');
     // S5 custa 1 carga e o bônus devolve 1: o saldo não muda.
     expect(state.charges).toBe(antes);
     expect(state.charges).toBeLessThanOrEqual(gameConfig.maxCharges);
   });
 
   it('o abatimento aparece no log, para o total continuar explicável', () => {
-    let state = jogar(createInitialState(), 'S5', 'sala-organizada', 'caprichar');
-    state = jogar(state, 'S4', 'sala-suja', 'completa');
+    let state = jogar(createInitialState(), 'S5', 'teste-embalo', 'caprichar');
+    state = jogar(state, 'S4', 'teste-generica', 'racionar');
     const entrada = state.log.at(-1)!;
     expect(entrada.detail).toContain('Ritmo embalado');
   });
 });
 
 describe('regras estruturais do catálogo', () => {
-  it('todo bloqueio usa a duração do config, sem valor escrito na mão', () => {
+  it('todo fechamento é curto e tem hora para acabar', () => {
+    /* Cada carta diz por quanto tempo fecha (a turma fica 25 min, o piso seca
+       em 12), ou fecha até um sinal do intervalo. Nenhum fechamento passa de
+       meia hora nem de dois sinais: fechar é desviar a rota, não tirar a sala
+       do jogo. */
     for (const situation of situations) {
       for (const action of situation.actions) {
         for (const effect of action.effects) {
-          if (effect.type !== 'blockRoom') continue;
-          expect(
-            effect.minutes,
-            `${situation.id}/${action.id} tem bloqueio fora do gameConfig`,
-          ).toBe(gameConfig.blockDurationMinutes);
+          const onde = `${situation.id}/${action.id}`;
+          if (effect.type === 'blockRoom' && effect.ateSinal) {
+            expect(effect.ateSinal, `${onde} fecha por sinais demais`).toBeLessThanOrEqual(2);
+            continue;
+          }
+          if (effect.type !== 'blockRoom' && effect.type !== 'blockRooms' && effect.type !== 'blockDeposito') continue;
+          expect(effect.minutes, `${onde} fecha por tempo demais`).toBeLessThanOrEqual(30);
+          expect(effect.minutes, `${onde} fecha sem duração`).toBeGreaterThanOrEqual(5);
         }
       }
     }
@@ -450,6 +550,10 @@ describe('regras estruturais do catálogo', () => {
       blockRoom: 'blockedUntilMinute' in state.rooms['S5'],
       grantBuff: Array.isArray(state.buffs),
       leaveUnstarted: 'status' in state.rooms['S5'],
+      modifyRooms: Array.isArray(state.modifiers),
+      placeStash: Array.isArray(state.stashes),
+      addMeta: Array.isArray(state.metas),
+      delegate: 'blockedUntilMinute' in state.rooms['S5'],
     };
     const futuros = new Set<string>();
     for (const situation of situations) {

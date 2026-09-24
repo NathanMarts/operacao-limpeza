@@ -68,12 +68,13 @@ export function descreverDecisao(decisao: DecisionRecord) {
 
 export function partidasCsv(entries: HistoryEntry[]): string {
   return csv(
-    ['Partida', 'Data', 'Hora', 'Concluídos', 'Total de ambientes', 'Pendentes', 'Não iniciados',
+    ['Partida', 'Data', 'Hora', 'Modo', 'Concluídos', 'Total de ambientes', 'Pendentes', 'Não iniciados',
       'Completa', 'Minutos', 'Distância (m)', 'Decisões', 'Rota'],
     emOrdem(entries).map(({ numero, entry }) => [
       numero,
       data(entry.playedAt),
       hora(entry.playedAt),
+      entry.modo ?? 'normal',
       entry.concluidas,
       entry.totalObjectives,
       entry.pendentes,

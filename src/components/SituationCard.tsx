@@ -145,7 +145,10 @@ export function SituationCard({
                   </li>
                 ))}
               {summary.depois.map((line) => (
-                <li key={line.label} className="flex gap-2 text-[12.5px] text-warn">
+                <li
+                  key={line.label}
+                  className={`flex gap-2 text-[12.5px] ${line.bom ? "text-ok" : "text-warn"}`}
+                >
                   <ConsequenceIcon
                     kind={line.kind}
                     className="mt-px h-[15px] w-[15px] shrink-0"

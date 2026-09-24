@@ -1,8 +1,9 @@
 import { situations, situationsById } from '../data/situations';
-import { objectives } from '../data/rooms';
+import { DEPOSITO_POSITION, objectives } from '../data/rooms';
 import { actionAvailability, type EffectContext } from './effects';
 import { shuffle } from './rng';
 import { distanceBetween } from './movement';
+import { resolverRegiao } from './mapa';
 import type { GameState, RoomDef, RoomState, SituationCondition, SituationDef } from './types';
 
 /**
@@ -52,6 +53,8 @@ export function findNearestBlocked(
     .filter((room) => {
       const roomState = state.rooms[room.id];
       if (roomState.status === 'concluida') return false;
+      /* Sala entregue a um colega não é "bloqueio" que alguém possa desfazer. */
+      if (roomState.delegatedUntil) return false;
       return roomState.blockedUntilMinute !== null && roomState.blockedUntilMinute > totalNow;
     });
 
@@ -86,6 +89,10 @@ function conditionHolds(
       return findNearestBlockable(state, room, totalNow) !== null;
     case 'hasBlockedObjective':
       return findNearestBlocked(state, room, totalNow) !== null;
+    case 'distanceFromDepotAtLeast':
+      return distanceBetween(room.corridorPosition, DEPOSITO_POSITION) >= condition.meters;
+    case 'temPendencias':
+      return resolverRegiao(state, room, { kind: 'pendencias' }).length > 0;
   }
 }
 
@@ -116,8 +123,30 @@ export function isEligible(
     charges: state.charges,
     position: room.corridorPosition,
     blockTargetId: null,
+    /* Com a partida: requisitos como "a sala da frente está por fazer" só
+       se respondem olhando o estado. Sem isto, uma situação sem nenhuma
+       ação possível podia ser sorteada, prendendo o jogador na carta. */
+    game: state,
   };
   return situation.actions.some((action) => actionAvailability(action, ctx).available);
+}
+
+/**
+ * Modo de playtest: restringe o sorteio a um conjunto de situações. Não muda
+ * nenhuma regra — só o que pode ser sorteado. Se nenhuma do conjunto couber
+ * numa sala, a reserva do catálogo inteiro continua valendo (ver confirmTravel).
+ */
+let poolAtivo: ReadonlySet<string> | null = null;
+let nomeDoModo: string | null = null;
+
+export function definirModoPlaytest(nome: string | null, ids: readonly string[] | null): void {
+  nomeDoModo = nome;
+  poolAtivo = ids ? new Set(ids) : null;
+}
+
+/** Nome do modo de playtest ativo, ou null numa partida normal. */
+export function modoPlaytest(): string | null {
+  return nomeDoModo;
 }
 
 /**
@@ -133,7 +162,9 @@ export function drawSituation(
 ): { situationId: string; bag: string[]; rngState: number } | null {
   let bag = [...state.bag];
   let rngState = state.rngState;
-  const allIds = situations.map((situation) => situation.id);
+  const allIds = situations
+    .filter((situation) => !poolAtivo || poolAtivo.has(situation.id))
+    .map((situation) => situation.id);
 
   // Duas passadas: a primeira evita repetir a situação anterior; a segunda aceita.
   for (const allowRepeat of [false, true]) {
