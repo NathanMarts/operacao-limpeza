@@ -139,6 +139,11 @@ function contextOf(state: GameState): EffectContext {
     charges: state.charges,
     position: room.corridorPosition,
     blockTargetId: state.situation!.blockTargetId,
+    unblockTargetId: state.situation!.unblockTargetId ?? null,
+    /* A partida inteira, como o jogo passa: requisitos como "existe algum
+       ambiente fechado" só se respondem olhando o estado. Sem isto o jogador
+       simulado escolhia uma ação que o jogo recusava e ficava parado nela. */
+    game: state,
   };
 }
 
