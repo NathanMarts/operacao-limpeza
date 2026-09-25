@@ -77,9 +77,9 @@ describe('custo pela distância', () => {
       };
       return espera.type === 'eventTime' ? evalTime(espera.amount, ctx) : 0;
     };
-    // A escada fica a 63,5 m do depósito; a S5, bem mais perto.
+    // A escada fica a 63 m do depósito; a S5, bem mais perto.
     expect(custo('S5')).toBeCloseTo((roomsById.S5.corridorPosition - 8) / gameConfig.metersPerMinute + 1);
-    expect(custo('ESC')).toBeCloseTo(63.5 / gameConfig.metersPerMinute + 1, 1);
+    expect(custo('ESC')).toBeCloseTo((roomsById.ESC.corridorPosition - 8) / gameConfig.metersPerMinute + 1, 1);
     expect(custo('ESC')).toBeGreaterThan(custo('S5') * 2);
   });
 });

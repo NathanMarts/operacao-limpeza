@@ -50,10 +50,10 @@ export const rooms: RoomDef[] = [
    */
   {
     id: 'ESC', name: 'Caixa de escada', shortName: 'ESC', kind: 'escada', side: 'top', tone: 'escada',
-    /* 71.5, e não 70: a escada fica ALÉM do fim do corredor, não na parede dele.
+    /* 71, e não 70: a escada fica ALÉM do fim do corredor, não na parede dele.
        Assim o marco da régua cai dentro da caixa amarela, que é onde o
        funcionário de fato para — e o desenho continua derivado do dado. */
-    corridorPosition: 71.5, baseCleaningMinutes: 7, materialCost: 1, cleanable: true,
+    corridorPosition: 71, baseCleaningMinutes: 7, materialCost: 1, cleanable: true,
     spanStartMeters: -9, spanWidthMeters: 9, depth: 1.2, straddlesCorridor: true,
   },
 
@@ -71,7 +71,7 @@ export const rooms: RoomDef[] = [
      S2/S8: a sala de aula grande, com a porta no canto junto à S3/S9. */
   {
     id: 'S1', name: 'PET e sala dos professores', shortName: 'S1', kind: 'sala', side: 'top', tone: 'tecnica',
-    corridorPosition: 64.5, baseCleaningMinutes: 5, materialCost: 1, cleanable: true,
+    corridorPosition: 64, baseCleaningMinutes: 5, materialCost: 1, cleanable: true,
     spanStartMeters: 0, spanWidthMeters: 6.3, depth: 1.7, subdivisao: 0.37,
   },
   {
@@ -84,12 +84,12 @@ export const rooms: RoomDef[] = [
      esquerdo. Por isso as duas estações estão a só 2 m uma da outra. */
   {
     id: 'S3', name: 'Sala 3', shortName: 'S3', kind: 'sala', side: 'top', tone: 'estreita',
-    corridorPosition: 46.8, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
+    corridorPosition: 46, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
     spanStartMeters: 17.8, spanWidthMeters: 6.4, depth: 1,
   },
   {
     id: 'S4', name: 'Sala 4', shortName: 'S4', kind: 'sala', side: 'top', tone: 'estreita',
-    corridorPosition: 44.8, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
+    corridorPosition: 44, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
     spanStartMeters: 24.2, spanWidthMeters: 6.5, depth: 1,
   },
   /* S5/S11 e S6/S12: porta no centro da parede do corredor, como na planta
@@ -101,7 +101,7 @@ export const rooms: RoomDef[] = [
   },
   {
     id: 'S6', name: 'Sala 6', shortName: 'S6', kind: 'sala', side: 'top', tone: 'media',
-    corridorPosition: 17.2, baseCleaningMinutes: 6, materialCost: 1, cleanable: true,
+    corridorPosition: 17, baseCleaningMinutes: 6, materialCost: 1, cleanable: true,
     spanStartMeters: 45.4, spanWidthMeters: 14.8, depth: 1,
   },
   /**
@@ -128,7 +128,7 @@ export const rooms: RoomDef[] = [
   // ----- Ala inferior -------------------------------------------------
   {
     id: 'S7', name: 'PET e sala dos professores', shortName: 'S7', kind: 'sala', side: 'bottom', tone: 'tecnica',
-    corridorPosition: 64.5, baseCleaningMinutes: 5, materialCost: 1, cleanable: true,
+    corridorPosition: 64, baseCleaningMinutes: 5, materialCost: 1, cleanable: true,
     spanStartMeters: 0, spanWidthMeters: 6.3, depth: 1.7, subdivisao: 0.37,
   },
   {
@@ -138,12 +138,12 @@ export const rooms: RoomDef[] = [
   },
   {
     id: 'S9', name: 'Sala 9', shortName: 'S9', kind: 'sala', side: 'bottom', tone: 'estreita',
-    corridorPosition: 46.8, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
+    corridorPosition: 46, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
     spanStartMeters: 17.8, spanWidthMeters: 6.4, depth: 1,
   },
   {
     id: 'S10', name: 'Sala 10', shortName: 'S10', kind: 'sala', side: 'bottom', tone: 'estreita',
-    corridorPosition: 44.8, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
+    corridorPosition: 44, baseCleaningMinutes: 4, materialCost: 1, cleanable: true,
     spanStartMeters: 24.2, spanWidthMeters: 6.5, depth: 1,
   },
   {
@@ -153,7 +153,7 @@ export const rooms: RoomDef[] = [
   },
   {
     id: 'S12', name: 'Sala 12', shortName: 'S12', kind: 'sala', side: 'bottom', tone: 'media',
-    corridorPosition: 17.2, baseCleaningMinutes: 6, materialCost: 1, cleanable: true,
+    corridorPosition: 17, baseCleaningMinutes: 6, materialCost: 1, cleanable: true,
     spanStartMeters: 45.4, spanWidthMeters: 14.8, depth: 1,
   },
   {

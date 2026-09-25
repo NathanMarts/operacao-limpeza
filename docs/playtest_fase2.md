@@ -230,3 +230,27 @@ Com a planta completa da faculdade, o mapa passou a seguir as proporções reais
 - **Fase 1:** as 8 continuam dentro do critério (a mais alta com 63%).
 - **Fase 2:** a mais alta ficou em 70%, no limite. "Buscar na caixa do corredor" (Acabou papel e sabonete) saiu com 0% nesta rodada. Ela só aparece quando existe uma caixa no mapa, e a caixa do "meio" ficou mais longe dos banheiros. É a ação mais situacional do catálogo; vale observar no playtest humano.
 - **Partidas completas:** 300, nenhuma travada, mediana de 116 min.
+
+### Distâncias em metros inteiros
+
+A posição de cada porta foi arredondada para baixo (piso), para toda distância entre duas portas sair em metros inteiros:
+- S1/S7: 64;
+- S2/S8: 53;
+- S3/S9: 46;
+- S4/S10: 44;
+- S5/S11: 32;
+- S6/S12: 17;
+- escada: 71.
+
+A varredura mínima do corredor passou de 73,5 m para 73 m. **Régua:** 7, 11, 7, 2, 12, 15, 9, 4 e 6 m.
+
+**Ajustes finos depois disso:**
+- Lixeiras: compactar +0,5 min; ida ao depósito com 1 min de parada em vez de 2. Compactar tinha subido para 75%.
+- Falta de água: a sala deixada para os banheiros espera com +3 min (antes +2). Essa ação tinha subido para 73%.
+
+**Resultado:**
+- Fase 1: no máximo 63%;
+- Fase 2: no máximo 66%;
+- 300 partidas completas sem travar.
+
+"Liberar o ambiente fechado" (Evento cancelado) segue perto de 0%: só existe quando há algo fechado no mapa, e o bot raramente precisa reabrir uma sala. Fica para o playtest humano dizer se ela é tentadora.

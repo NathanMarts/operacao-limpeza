@@ -215,16 +215,16 @@ export const situations: SituationDef[] = [
         effects: [
           ...conclui(base, R),
           { type: 'moveTo', target: 'deposito' },
-          { type: 'eventTime', amount: min(2) },
+          { type: 'eventTime', amount: min(1) },
           { type: 'refill' },
         ],
       },
       {
         id: 'acumular',
         label: 'Compactar no carrinho',
-        description: 'Fecha a sala sem desvio, levando os sacos: uma carga a mais.',
+        description: 'Fecha a sala sem desvio, amarrando os sacos: +1 carga.',
         requires: [precisa(Rmais(1))],
-        effects: [...conclui(base, Rmais(1))],
+        effects: [...conclui(baseMais(0.5), Rmais(1))],
       },
       {
         id: 'coleta-radio',
@@ -714,7 +714,7 @@ export const situations: SituationDef[] = [
     appliesTo: ['escada'],
     title: 'Escada enlameada',
     prompt:
-      'Barro nos degraus. A escada é a ponta do corredor, a 63,5 m do depósito: de onde você veio muda o custo.',
+      'Barro nos degraus. A escada é a ponta do corredor, a 63 m do depósito: de onde você veio muda o custo.',
     conditions: [],
     actions: [
       {
@@ -890,9 +890,9 @@ export const situations: SituationDef[] = [
       {
         id: 'ir-banheiros',
         label: 'Deixar esta e fazer os banheiros',
-        description: 'Separa o material daqui e vira para os banheiros; esta espera, +2 min.',
+        description: 'Separa o material daqui e vira para os banheiros; esta espera, +3 min.',
         requires: [precisa(R), { type: 'regiaoComAlvo', target: { kind: 'tipo', tipo: 'wc' } }],
-        effects: [{ type: 'spendCharges', amount: R }, { type: 'leavePending', residual: baseMais(2) }, SEM_AGUA],
+        effects: [{ type: 'spendCharges', amount: R }, { type: 'leavePending', residual: baseMais(3) }, SEM_AGUA],
       },
       {
         id: 'religar-trecho',

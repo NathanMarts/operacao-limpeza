@@ -5,7 +5,7 @@ import type { GameState, RegionTarget, RoomDef } from './types';
 /** A torneira dos banheiros, na base. */
 export const BANHEIRO_POSITION = 4;
 /** A caixa de escada, na ponta do corredor. */
-export const ESCADA_POSITION = 71.5;
+export const ESCADA_POSITION = 71;
 
 /** Intervalo entre os sinais de aula, em minutos de turno. Um relógio só, para o jogo todo. */
 export const MINUTOS_ENTRE_SINAIS = 20;
@@ -39,7 +39,7 @@ export function depositoFechado(state: GameState): boolean {
 /** Pontos do corredor usados como destino de recursos. */
 export const PONTOS = {
   /** Estação de S4/S10: o meio do corredor. */
-  meio: 44.8,
+  meio: 44,
   /** Estação de S2/S8: o fundo, a região mais longe do depósito. */
   fundo: 53,
 } as const;

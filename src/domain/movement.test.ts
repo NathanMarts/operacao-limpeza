@@ -96,14 +96,14 @@ describe('ida e volta pelo corredor', () => {
     // A partir da entrada, a leste: banheiro primeiro, escada por último.
     const sweep = ['WC-A', 'S6', 'S5', 'S4', 'S3', 'S2', 'S1', 'ESC'];
     const state = walk(sweep);
-    expect(state.distanceTraveled).toBe(73.5);
+    expect(state.distanceTraveled).toBe(gameConfig.minimumSweepMeters);
     expect(state.distanceTraveled).toBe(gameConfig.minimumSweepMeters);
   });
 
   it('duas ordens diferentes produzem deslocamentos diferentes', () => {
     const emOrdem = walk(['WC-A', 'S6', 'S5', 'S4', 'S3', 'S2', 'S1', 'ESC']);
     const zigZag = walk(['S1', 'WC-A', 'S2', 'S6', 'S3', 'S5', 'S4', 'ESC']);
-    expect(emOrdem.distanceTraveled).toBe(73.5);
+    expect(emOrdem.distanceTraveled).toBe(gameConfig.minimumSweepMeters);
     expect(zigZag.distanceTraveled).toBeGreaterThan(emOrdem.distanceTraveled);
     // A rota ruim custa mais que o dobro da boa — o planejamento tem peso real.
     expect(zigZag.distanceTraveled).toBeGreaterThan(emOrdem.distanceTraveled * 2);

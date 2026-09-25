@@ -106,8 +106,8 @@ describe('renderização dos componentes', () => {
     expect(html).not.toMatch(/<image(?![^>]*pointer-events="none")/);
     // Marco zero (o quadrado do início, a leste) e cotas de cada trecho.
     expect(html).toContain('INÍCIO');
-    expect(html).toContain('14,8m');
-    expect(html).toContain('11,5m');
+    expect(html).toContain('15m');
+    expect(html).toContain('11m');
   });
 
   it('o modal de situação mostra as três cartas com seus efeitos', () => {
